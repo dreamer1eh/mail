@@ -31,6 +31,21 @@ export global LayoutMetrics {
     out property <length> corner-radius: 8px;
 }
 
+// Mail actions and their matching sidebar destinations share one semantic
+// icon palette. These colors stay stable across themes so the same action is
+// recognizable wherever it appears.
+export global MailIconPalette {
+    out property <color> inbox: #2f9cf4;
+    out property <color> starred: #f5b301;
+    out property <color> sent: #00a8f3;
+    out property <color> spam: #f59e0b;
+    out property <color> trash: #ff5b4d;
+    out property <color> archive: #8b5cf6;
+    out property <color> drafts: #d946ef;
+    out property <color> folders: #22a06b;
+    out property <color> other: #64748b;
+}
+
 // Application colors live here instead of being re-declared by every custom
 // button and view. Palette.color-scheme is set by AppWindow's theme setting,
 // so all consumers update together when the user changes appearance.

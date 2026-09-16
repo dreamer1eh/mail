@@ -1,4 +1,5 @@
 import { AccountMailPreferences } from "../components/account-mail-preferences.slint";
+import { ActionMenu, ActionMenuEntry } from "../components/action-menu.slint";
 import { ZoomControls } from "../components/zoom-controls.slint";
 import { Button as ReaderButton, HorizontalBox, ListView, ScrollView, VerticalBox } from "std-widgets.slint";
 import { MailAttachments, EmailReader, EmailLink, EmailTile, MailLabelRow, ThreadMessageRow } from "../models.slint";
@@ -9,7 +10,7 @@ import { IconButton, LineEdit, TextEdit, ToolbarIconButton } from "../components
 import { EmailLinkContextArea } from "../components/email-link-context-area.slint";
 import { RenderingInfoDialog } from "../dialogs/rendering-info-dialog.slint";
 import { TypeScale } from "../typography.slint";
-import { AppTheme, LayoutMetrics } from "../design-system.slint";
+import { AppTheme, LayoutMetrics, MailIconPalette } from "../design-system.slint";
 
 component ReaderControl inherits ToolbarIconButton {
     tooltip-above: true;
@@ -272,6 +273,42 @@ export component MailReadingPane inherits Rectangle {
     in property <string> selected_sender_verification: "";
     in property <bool> remote-images-blocked: false;
     in property <bool> print_supported: true;
+    private property <[ActionMenuEntry]> draft-action-menu: [
+        { id: "edit_draft", title: @tr("Continue editing"), icon: @image-url("../icons/lucide/outline/compose.svg") },
+        { id: "rendering_info", title: @tr("About email rendering"), icon: @image-url("../icons/lucide/outline/info.svg") },
+        { id: "source", title: root.source_mode ? @tr("Show rendered message") : @tr("Show source"), icon: root.source_mode ? @image-url("../icons/lucide/outline/browser.svg") : @image-url("../icons/lucide/outline/code.svg") },
+        { id: "plain_text", title: root.text_mode ? @tr("Show rendered message") : @tr("View plain text"), icon: root.text_mode ? @image-url("../icons/lucide/outline/browser.svg") : @image-url("../icons/lucide/outline/file.svg") },
+        { id: "trash", title: @tr("Move to trash"), icon: @image-url("../icons/lucide/outline/trash.svg"), destructive: true },
+    ];
+    private property <[ActionMenuEntry]> message-action-menu: [
+        { id: "reply", title: @tr("Reply"), icon: @image-url("../icons/lucide/outline/reply.svg") },
+        { id: "reply_all", title: @tr("Reply all"), icon: @image-url("../icons/lucide/outline/reply-all.svg") },
+        { id: "forward", title: @tr("Forward"), icon: @image-url("../icons/lucide/outline/forward.svg") },
+        { id: "openpgp", title: @tr("Decrypt / verify OpenPGP"), icon: @image-url("../icons/lucide/outline/lock.svg") },
+        { id: "print", title: @tr("Print message"), icon: @image-url("../icons/lucide/outline/printer.svg") },
+        { id: "browser", title: @tr("Open in browser"), icon: @image-url("../icons/lucide/outline/browser.svg") },
+        { id: "rendering_info", title: @tr("About email rendering"), icon: @image-url("../icons/lucide/outline/info.svg") },
+        { id: "source", title: root.source_mode ? @tr("Show rendered message") : @tr("Show source"), icon: root.source_mode ? @image-url("../icons/lucide/outline/browser.svg") : @image-url("../icons/lucide/outline/code.svg") },
+        { id: "plain_text", title: root.text_mode ? @tr("Show rendered message") : @tr("View plain text"), icon: root.text_mode ? @image-url("../icons/lucide/outline/browser.svg") : @image-url("../icons/lucide/outline/file.svg") },
+        { id: "read", title: root.selected_unread ? @tr("Mark as read") : @tr("Mark as unread"), icon: root.selected_unread ? @image-url("../icons/lucide/outline/mail-open.svg") : @image-url("../icons/lucide/outline/mail.svg") },
+        { id: "archive", title: @tr("Archive"), icon: @image-url("../icons/lucide/outline/archive.svg") },
+        { id: "spam", title: @tr("Move to spam"), icon: @image-url("../icons/lucide/outline/alert.svg") },
+        { id: "trash", title: @tr("Move to trash"), icon: @image-url("../icons/lucide/outline/trash.svg"), destructive: true },
+    ];
+    private property <[ActionMenuEntry]> message-action-menu-no-print: [
+        { id: "reply", title: @tr("Reply"), icon: @image-url("../icons/lucide/outline/reply.svg") },
+        { id: "reply_all", title: @tr("Reply all"), icon: @image-url("../icons/lucide/outline/reply-all.svg") },
+        { id: "forward", title: @tr("Forward"), icon: @image-url("../icons/lucide/outline/forward.svg") },
+        { id: "openpgp", title: @tr("Decrypt / verify OpenPGP"), icon: @image-url("../icons/lucide/outline/lock.svg") },
+        { id: "browser", title: @tr("Open in browser"), icon: @image-url("../icons/lucide/outline/browser.svg") },
+        { id: "rendering_info", title: @tr("About email rendering"), icon: @image-url("../icons/lucide/outline/info.svg") },
+        { id: "source", title: root.source_mode ? @tr("Show rendered message") : @tr("Show source"), icon: root.source_mode ? @image-url("../icons/lucide/outline/browser.svg") : @image-url("../icons/lucide/outline/code.svg") },
+        { id: "plain_text", title: root.text_mode ? @tr("Show rendered message") : @tr("View plain text"), icon: root.text_mode ? @image-url("../icons/lucide/outline/browser.svg") : @image-url("../icons/lucide/outline/file.svg") },
+        { id: "read", title: root.selected_unread ? @tr("Mark as read") : @tr("Mark as unread"), icon: root.selected_unread ? @image-url("../icons/lucide/outline/mail-open.svg") : @image-url("../icons/lucide/outline/mail.svg") },
+        { id: "archive", title: @tr("Archive"), icon: @image-url("../icons/lucide/outline/archive.svg") },
+        { id: "spam", title: @tr("Move to spam"), icon: @image-url("../icons/lucide/outline/alert.svg") },
+        { id: "trash", title: @tr("Move to trash"), icon: @image-url("../icons/lucide/outline/trash.svg"), destructive: true },
+    ];
     in-out property <bool> text_mode: false;
     in-out property <bool> source_mode: false;
     in-out property <bool> rendering_info_open: false;
@@ -486,11 +523,9 @@ export component MailReadingPane inherits Rectangle {
                                 interactive: root.has_selected;
                                 compact: root.compact;
                                 icon: root.selected_starred ? @image-url("../icons/lucide/filled/star.svg") : @image-url("../icons/lucide/outline/star.svg");
-                                icon-color: root.selected_starred ? root.accent : root.secondary-text;
+                                icon-color: root.selected_starred ? MailIconPalette.starred : root.secondary-text;
                                 idle-background: root.control-bg;
                                 hover-background: root.muted-control-bg;
-                                active-background: root.accent-soft;
-                                active: root.selected_starred;
                                 tooltip-text: root.selected_starred ? @tr("Remove star") : @tr("Star message");
                                 clicked => { root.message_action(root.selected_starred ? "unstar" : "star"); }
                             }
@@ -499,11 +534,9 @@ export component MailReadingPane inherits Rectangle {
                                 interactive: root.has_selected;
                                 compact: root.compact;
                                 icon: root.selected_unread ? @image-url("../icons/lucide/filled/mail.svg") : @image-url("../icons/lucide/outline/mail-open.svg");
-                                icon-color: root.selected_unread ? root.accent : root.secondary-text;
+                                icon-color: root.selected_unread ? MailIconPalette.inbox : root.secondary-text;
                                 idle-background: root.control-bg;
                                 hover-background: root.muted-control-bg;
-                                active-background: root.accent-soft;
-                                active: root.selected_unread;
                                 tooltip-text: root.selected_unread ? @tr("Mark as read") : @tr("Mark as unread");
                                 clicked => { root.message_action(root.selected_unread ? "mark_read" : "mark_unread"); }
                             }
@@ -536,11 +569,9 @@ export component MailReadingPane inherits Rectangle {
                                     height: parent.height;
                                     interactive: root.has_selected;
                                     icon: root.selected-label-count > 0 ? @image-url("../icons/lucide/filled/file-directory.svg") : @image-url("../icons/lucide/outline/file-directory.svg");
-                                    icon-color: root.selected-label-count > 0 ? root.accent : root.secondary-text;
+                                    icon-color: root.selected-label-count > 0 ? MailIconPalette.folders : root.secondary-text;
                                     idle-background: root.control-bg;
                                     hover-background: root.muted-control-bg;
-                                    active-background: root.accent-soft;
-                                    active: root.selected-label-count > 0;
                                     tooltip-text: @tr("Manage labels");
                                     accessible-id: "message-label-button";
                                     clicked => {
@@ -712,48 +743,41 @@ export component MailReadingPane inherits Rectangle {
                                     }
                                 }
                             }
-                            more-menu := ContextMenuArea {
-                                width: root.compact ? LayoutMetrics.touch-target : LayoutMetrics.desktop-icon-button-size;
-                                height: root.compact ? LayoutMetrics.touch-target : LayoutMetrics.desktop-icon-button-size;
-                                enabled: root.has_selected;
-                                ToolbarIconButton {
-                                    compact: root.compact;
-                                    width: parent.width;
-                                    height: parent.height;
-                                    icon: @image-url("../icons/lucide/outline/kebab-horizontal.svg");
-                                    icon-color: root.secondary-text;
-                                    idle-background: root.control-bg;
-                                    hover-background: root.muted-control-bg;
-                                    tooltip-text: @tr("More message actions");
-                                    clicked => { more-menu.show({ x: 0px, y: parent.height }); }
-                                }
-                                Menu {
-                                    if root.selected_is_draft : MenuItem { title: @tr("Continue editing"); activated => { root.compose_message_action("edit_draft"); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Reply"); activated => { root.compose_message_action("reply"); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Reply all"); activated => { root.compose_message_action("reply_all"); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Forward"); activated => { root.compose_message_action("forward"); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Decrypt / verify OpenPGP"); activated => { AccountMailPreferences.read-message(); } }
-                                    if root.print_supported && !root.selected_is_draft : MenuItem { title: @tr("Print message"); activated => { root.print_message(); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Open in browser"); activated => { root.open_message_in_browser(); } }
-                                    MenuItem { title: @tr("About email rendering"); activated => { root.rendering_info_open = true; } }
-                                    MenuItem {
-                                        title: root.source_mode ? @tr("Show rendered message") : @tr("Show source");
-                                        activated => {
-                                            root.source_mode = !root.source_mode;
-                                            if root.source_mode { root.text_mode = false; EmailReader.reader-mode = false; }
-                                        }
+                            ActionMenu {
+                                compact: root.compact;
+                                interactive: root.has_selected;
+                                icon: @image-url("../icons/lucide/outline/kebab-horizontal.svg");
+                                icon-color: root.secondary-text;
+                                tooltip-text: @tr("More message actions");
+                                trigger-accessible-id: "message-more-actions-button";
+                                max-menu-height: max(160px, root.height - (root.compact ? LayoutMetrics.compact-header-height : LayoutMetrics.desktop-mail-toolbar-height) - 12px);
+                                entries: root.selected_is_draft
+                                    ? root.draft-action-menu
+                                    : root.print_supported
+                                        ? root.message-action-menu
+                                        : root.message-action-menu-no-print;
+                                activated(action) => {
+                                    if action == "edit_draft" || action == "reply" || action == "reply_all" || action == "forward" {
+                                        root.compose_message_action(action);
+                                    } else if action == "openpgp" {
+                                        AccountMailPreferences.read-message();
+                                    } else if action == "print" {
+                                        root.print_message();
+                                    } else if action == "browser" {
+                                        root.open_message_in_browser();
+                                    } else if action == "rendering_info" {
+                                        root.rendering_info_open = true;
+                                    } else if action == "source" {
+                                        root.source_mode = !root.source_mode;
+                                        if root.source_mode { root.text_mode = false; EmailReader.reader-mode = false; }
+                                    } else if action == "plain_text" {
+                                        root.text_mode = !root.text_mode;
+                                        if root.text_mode { root.source_mode = false; EmailReader.reader-mode = false; }
+                                    } else if action == "read" {
+                                        root.message_action(root.selected_unread ? "mark_read" : "mark_unread");
+                                    } else {
+                                        root.message_action(action);
                                     }
-                                    MenuItem {
-                                        title: root.text_mode ? @tr("Show rendered message") : @tr("View plain text");
-                                        activated => {
-                                            root.text_mode = !root.text_mode;
-                                            if root.text_mode { root.source_mode = false; EmailReader.reader-mode = false; }
-                                        }
-                                    }
-                                    if !root.selected_is_draft : MenuItem { title: root.selected_unread ? @tr("Mark as read") : @tr("Mark as unread"); activated => { root.message_action(root.selected_unread ? "mark_read" : "mark_unread"); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Archive"); activated => { root.message_action("archive"); } }
-                                    if !root.selected_is_draft : MenuItem { title: @tr("Move to spam"); activated => { root.message_action("spam"); } }
-                                    MenuItem { title: @tr("Move to trash"); activated => { root.message_action("trash"); } }
                                 }
                             }
                         }

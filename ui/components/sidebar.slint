@@ -8,7 +8,7 @@ import {
     CollapsibleWorkspaceSidebar,
     WorkspaceMiniHeading,
 } from "workspace-layout.slint";
-import { LayoutMetrics } from "../design-system.slint";
+import { LayoutMetrics, MailIconPalette } from "../design-system.slint";
 import { TypeScale } from "../typography.slint";
 
 export component MailSidebar inherits CollapsibleWorkspaceSidebar {
@@ -189,7 +189,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         hover-background: root.hover-background;
                         body-color: root.title-color;
                         muted-color: root.muted-color;
-                        icon-color: root.monochrome-icons ? root.body-color : #2f9cf4;
+                        icon-color: root.monochrome-icons ? root.body-color : MailIconPalette.inbox;
                         open: entry.open;
                         toggled(open) => { root.toggle-section(entry.key, open); }
                     }
@@ -213,7 +213,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         accent-color: root.accent-color;
                         body-color: root.body-color;
                         muted-color: root.muted-color;
-                        icon-color: root.monochrome-icons ? (root.selected-scope == "Unified Inbox" ? root.accent-color : root.muted-color) : #2f9cf4;
+                        icon-color: root.monochrome-icons ? (root.selected-scope == "Unified Inbox" ? root.accent-color : root.muted-color) : MailIconPalette.inbox;
                         clicked(scope) => { root.select-scope(scope); }
                     }
 
@@ -244,12 +244,12 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         body-color: root.body-color;
                         muted-color: root.muted-color;
                         icon-color: root.monochrome-icons ? (entry.mailbox.scope == root.selected-scope ? root.accent-color : root.muted-color)
-                            : entry.mailbox.scope == "Unified Starred" ? #f5b301
-                            : entry.mailbox.scope == "Unified Sent" ? #00a8f3
-                            : entry.mailbox.scope == "Unified Spam" ? #f59e0b
-                            : entry.mailbox.scope == "Unified Trash" ? #ff5b4d
-                            : entry.mailbox.scope == "Unified Archive" ? #8b5cf6
-                            : #d946ef;
+                            : entry.mailbox.scope == "Unified Starred" ? MailIconPalette.starred
+                            : entry.mailbox.scope == "Unified Sent" ? MailIconPalette.sent
+                            : entry.mailbox.scope == "Unified Spam" ? MailIconPalette.spam
+                            : entry.mailbox.scope == "Unified Trash" ? MailIconPalette.trash
+                            : entry.mailbox.scope == "Unified Archive" ? MailIconPalette.archive
+                            : MailIconPalette.drafts;
                         clicked(scope) => { root.select-scope(scope); }
                     }
 
@@ -265,7 +265,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         body-color: root.body-color;
                         muted-color: root.muted-color;
                         icon: @image-url("../icons/lucide/filled/tag.svg");
-                        icon-color: root.monochrome-icons ? root.body-color : #2f9cf4;
+                        icon-color: root.monochrome-icons ? root.body-color : MailIconPalette.inbox;
                         open: entry.open;
                         toggled(open) => { root.toggle-section(entry.key, open); }
                     }
@@ -285,7 +285,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         accent-color: root.accent-color;
                         body-color: root.body-color;
                         muted-color: root.muted-color;
-                        icon-color: root.monochrome-icons ? (root.selected-scope == "Important" ? root.accent-color : root.muted-color) : #2f9cf4;
+                        icon-color: root.monochrome-icons ? (root.selected-scope == "Important" ? root.accent-color : root.muted-color) : MailIconPalette.inbox;
                         clicked(scope) => { root.select-scope(scope); }
                     }
 
@@ -304,7 +304,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         accent-color: root.accent-color;
                         body-color: root.body-color;
                         muted-color: root.muted-color;
-                        icon-color: root.monochrome-icons ? (root.selected-scope == "Other" ? root.accent-color : root.muted-color) : #64748b;
+                        icon-color: root.monochrome-icons ? (root.selected-scope == "Other" ? root.accent-color : root.muted-color) : MailIconPalette.other;
                         clicked(scope) => { root.select-scope(scope); }
                     }
 
@@ -344,7 +344,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         body-color: root.body-color;
                         muted-color: root.muted-color;
                         icon: @image-url("../icons/lucide/filled/folders.svg");
-                        icon-color: root.monochrome-icons ? root.body-color : #22a06b;
+                        icon-color: root.monochrome-icons ? root.body-color : MailIconPalette.folders;
                         open: entry.open;
                         toggled(open) => { root.toggle-section(entry.key, open); }
                     }
@@ -446,15 +446,15 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         body-color: root.body-color;
                         muted-color: root.muted-color;
                         icon-color: root.monochrome-icons ? (entry.mailbox.scope == root.selected-scope ? root.accent-color : root.muted-color)
-                            : entry.mailbox.label == "Inbox" ? #2f9cf4
-                            : entry.mailbox.label == "Starred" ? #f5b301
-                            : entry.mailbox.label == "Sent" ? #00a8f3
-                            : entry.mailbox.label == "Archive" ? #8b5cf6
-                            : entry.mailbox.label == "Spam" ? #f59e0b
-                            : entry.mailbox.label == "Trash" ? #ff5b4d
-                            : entry.mailbox.label == "Drafts" ? #d946ef
+                            : entry.mailbox.label == "Inbox" ? MailIconPalette.inbox
+                            : entry.mailbox.label == "Starred" ? MailIconPalette.starred
+                            : entry.mailbox.label == "Sent" ? MailIconPalette.sent
+                            : entry.mailbox.label == "Archive" ? MailIconPalette.archive
+                            : entry.mailbox.label == "Spam" ? MailIconPalette.spam
+                            : entry.mailbox.label == "Trash" ? MailIconPalette.trash
+                            : entry.mailbox.label == "Drafts" ? MailIconPalette.drafts
                             : entry.mailbox.has_custom_color ? entry.mailbox.color
-                            : #22a06b;
+                            : MailIconPalette.folders;
                         clicked(scope) => { root.select-scope(scope); }
                         toggled(folder-id, expanded) => { root.toggle-folder(folder-id, expanded); }
                         new-subfolder(account-id, folder-id, name) => {

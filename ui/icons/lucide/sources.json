@@ -129,6 +129,9 @@
     "plus.svg": {
       "source": "plus"
     },
+    "printer.svg": {
+      "source": "printer"
+    },
     "quote.svg": {
       "source": "quote"
     },
@@ -387,6 +390,10 @@
     "plus": {
       "path": "sources/plus.svg",
       "sha256": "f729556dad8f5316a6419a5f44ade394885657fab1ca2908ee80dcd5afe81616"
+    },
+    "printer": {
+      "path": "sources/printer.svg",
+      "sha256": "48fa647af0f143683bcbfd227c35c716aa48bc5ff158d6ac46823871180ffb87"
     },
     "quote": {
       "path": "sources/quote.svg",
