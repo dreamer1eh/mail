@@ -281,6 +281,40 @@
  default-features = false
 
  [lints.clippy]
+--- a/crates/parley/src/bidi.rs
++++ b/crates/parley/src/bidi.rs
+@@ -892,3 +892,30 @@ impl BracketStack {
+ const fn mask(t: BidiClass) -> u32 {
+-    1 << (t.to_icu4c_value() as u32)
++    // Keep the bit assignment local: these masks only need a unique bit for
++    // each bidi class and do not depend on ICU4C's numeric representation.
++    match t {
++        BidiClass::LeftToRight => 1 << 0,
++        BidiClass::RightToLeft => 1 << 1,
++        BidiClass::EuropeanNumber => 1 << 2,
++        BidiClass::EuropeanSeparator => 1 << 3,
++        BidiClass::EuropeanTerminator => 1 << 4,
++        BidiClass::ArabicNumber => 1 << 5,
++        BidiClass::CommonSeparator => 1 << 6,
++        BidiClass::ParagraphSeparator => 1 << 7,
++        BidiClass::SegmentSeparator => 1 << 8,
++        BidiClass::WhiteSpace => 1 << 9,
++        BidiClass::OtherNeutral => 1 << 10,
++        BidiClass::LeftToRightEmbedding => 1 << 11,
++        BidiClass::LeftToRightOverride => 1 << 12,
++        BidiClass::ArabicLetter => 1 << 13,
++        BidiClass::RightToLeftEmbedding => 1 << 14,
++        BidiClass::RightToLeftOverride => 1 << 15,
++        BidiClass::PopDirectionalFormat => 1 << 16,
++        BidiClass::NonspacingMark => 1 << 17,
++        BidiClass::BoundaryNeutral => 1 << 18,
++        BidiClass::FirstStrongIsolate => 1 << 19,
++        BidiClass::LeftToRightIsolate => 1 << 20,
++        BidiClass::RightToLeftIsolate => 1 << 21,
++        BidiClass::PopDirectionalIsolate => 1 << 22,
++        _ => 0,
++    }
+ }
 --- a/crates/parley/src/shape/mod.rs
 +++ b/crates/parley/src/shape/mod.rs
 @@ -18,13 +18,21 @@
