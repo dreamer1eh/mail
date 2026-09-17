@@ -9,7 +9,7 @@
   "email-content-aspect": 1.055556,
   "email_tiles": [
     {
-      "image": "resources/screenshots/demo-email.png",
+      "image": "resources/screenshots/demo-email.svg",
       "y": 0,
       "height": 1
     }

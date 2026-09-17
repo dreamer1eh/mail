@@ -24,6 +24,28 @@ command -v jq >/dev/null 2>&1 || {
 
 slint-viewer --check "$ui"
 
+demo_email_svg="$output_dir/demo-email.svg"
+demo_email_png="$temporary_dir/demo-email.png"
+demo_email_ui="$temporary_dir/demo-email.slint"
+ln -s "$demo_email_svg" "$temporary_dir/demo-email.svg"
+cat > "$demo_email_ui" <<'EOF'
+export component DemoEmail inherits Window {
+    preferred-width: 720px;
+    preferred-height: 760px;
+
+    Image {
+        width: 100%;
+        height: 100%;
+        source: @image-url("demo-email.svg");
+        image-fit: fill;
+    }
+}
+EOF
+SLINT_SCALE_FACTOR=2 slint-viewer \
+  --style fluent \
+  --screenshot "$demo_email_png" \
+  "$demo_email_ui"
+
 favicon_dir="$temporary_dir/favicons"
 mapfile -t sender_addresses < <(
   jq -r '[.selected_address, (.emails[].address), (.thread_messages[]? | select(.outgoing | not) | .address)] | unique[]' "$fixture"
@@ -58,6 +80,7 @@ render() {
     --arg active_view "$active_view" \
     --arg settings_tab "$settings_tab" \
     --arg favicon_dir "$favicon_dir" \
+    --arg demo_email "$demo_email_png" \
     --argjson show_threads "$show_threads" \
     --argjson show_account_markers "$show_account_markers" \
     '
@@ -82,6 +105,7 @@ render() {
           {"kind": "databases", "size": "1.34 GB", "fraction": 0.0727, "offset": 0.9125, "color": "#a855f7"},
           {"kind": "other", "size": "279.6 MB", "fraction": 0.0148, "offset": 0.9852, "color": "#94a3b8"}
         ]
+      | .email_tiles |= map(.image = $demo_email)
       | .selected_favicon = favicon_path(.selected_address)
       | .selected_has_favicon = true
       | .connected_accounts |= map(
@@ -159,6 +183,14 @@ render() {
     "$ui" > "$temporary_ui"
 
   echo "Rendering $output_name.png"
+  # Slint 1.17 can snapshot before runtime-loaded images have populated the
+  # software renderer's cache. A discarded first render keeps the committed
+  # screenshot deterministic without replacing editable SVG sources.
+  SLINT_SCALE_FACTOR=2 slint-viewer \
+    --style "$style" \
+    --load-data "$data_file" \
+    --screenshot "$temporary_dir/$output_name-warmup.png" \
+    "$temporary_ui"
   SLINT_SCALE_FACTOR=2 slint-viewer \
     --style "$style" \
     --load-data "$data_file" \
