@@ -69,6 +69,16 @@ def build(sources):
         "C5.27 12.5 4.885 12.1 4.9 11.6L5.05 6.13"
         "C5.065 5.72 5.39 5.4 5.8 5.4Z"
     ))))
+    # Preserve the earlier opening as a generated variant, byte-for-byte.
+    inbox_flectar_old = cut(inbox_flectar.body, solid(ET.Element("path", d=(
+        "M5.95 5.75H18.05C18.53 5.75 18.935 6.12 18.95 6.6L19.1 11.6"
+        "C19.115 12.1 18.73 12.5 18.23 12.5H17.5"
+        "A2.25 2.25 0 0 0 15.25 14.75V18.75"
+        "A.75 .75 0 0 1 14.5 19.5H9.5A.75 .75 0 0 1 8.75 18.75V14.75"
+        "A2.25 2.25 0 0 0 6.5 12.5H5.77"
+        "C5.27 12.5 4.885 12.1 4.9 11.6L5.05 6.6"
+        "C5.065 6.12 5.47 5.75 5.95 5.75Z"
+    ))))
     recipes = {
         "account": Recipe("circle-user-round", cut(
             solid(p("circle-user-round", 2)), portrait("circle-user-round", 1, 0)),
@@ -115,6 +125,8 @@ def build(sources):
             "Solid tray; original lip becomes a cutout."),
         "inbox-flectar": Recipe(None, inbox_flectar,
             "Custom tapered tray; softly rounded outline and curved shoulders around an open well."),
+        "inbox-flectar-old": Recipe(None, inbox_flectar_old,
+            "Preserved earlier Flectar tray opening."),
         "info": Recipe("info", cut(solid(p("info", 0)), lines("info", 1, 2)),
             "Solid circle; information mark cutout."),
         "keyboard": Recipe("keyboard", cut(solid(p("keyboard", 8)), lines("keyboard", *range(8))),
