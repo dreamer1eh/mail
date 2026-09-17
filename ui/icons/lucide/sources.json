@@ -99,6 +99,12 @@
     "link.svg": {
       "source": "link-2"
     },
+    "list-filter.svg": {
+      "source": "list-filter"
+    },
+    "list-filter-plus.svg": {
+      "source": "list-filter-plus"
+    },
     "list-ordered.svg": {
       "source": "list-ordered"
     },
@@ -346,6 +352,14 @@
     "list": {
       "path": "sources/list.svg",
       "sha256": "061436ccded5e2279cc7b912ec66ad334923d759bae3acf0ab9a63e54b35520f"
+    },
+    "list-filter": {
+      "path": "sources/list-filter.svg",
+      "sha256": "e7df1aaac5d058cb73d7fb730114ab308dcc65ae737080d188a7fac7c11593f6"
+    },
+    "list-filter-plus": {
+      "path": "sources/list-filter-plus.svg",
+      "sha256": "49d9b588a89ff51134ff7297f84638504313afe1f6f9ed7da420eeb74591b2b8"
     },
     "list-ordered": {
       "path": "sources/list-ordered.svg",

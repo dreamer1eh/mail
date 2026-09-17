@@ -197,7 +197,9 @@ export component WorkspaceSearchToolbar inherits Rectangle {
                 height: LayoutMetrics.control-height;
 
                 ToolbarIconButton {
-                    icon: @image-url("../icons/lucide/outline/filter.svg");
+                    icon: root.filter-active
+                        ? @image-url("../icons/lucide/outline/list-filter-plus.svg")
+                        : @image-url("../icons/lucide/outline/list-filter.svg");
                     icon-color: root.filter-active ? AppTheme.accent : AppTheme.secondary;
                     hover-background: AppTheme.muted-control-bg;
                     active: root.filter-active;
