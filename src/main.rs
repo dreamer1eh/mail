@@ -70,7 +70,7 @@ use flectar_mail_core::config::Paths;
 use flectar_mail_core::models::{
     Account, AccountConfig, AddPasswordAccountArgs, CalendarConnection, CardDavConnection,
     ContactRecord, ContactRecordCursor, ContactRecordPage, CreateEventArgs, DraftAttachmentIn,
-    Label, MailProtocol, Provider, Snippet, ThreadCursor, UpdateEventArgs,
+    Label, MailProfile, MailProtocol, Provider, Settings, Snippet, ThreadCursor, UpdateEventArgs,
 };
 #[cfg(test)]
 use mail::fixture_messages;
@@ -416,6 +416,106 @@ struct UiTaskUpdate {
     close_to_tray: Option<bool>,
 }
 
+#[derive(Clone)]
+struct AccountPresentationSettings {
+    profiles: Vec<MailProfile>,
+    show_markers: bool,
+    account_colors: HashMap<String, String>,
+    account_short_names: HashMap<String, String>,
+}
+
+impl Default for AccountPresentationSettings {
+    fn default() -> Self {
+        Self {
+            profiles: Vec::new(),
+            show_markers: false,
+            account_colors: HashMap::new(),
+            account_short_names: HashMap::new(),
+        }
+    }
+}
+
+impl AccountPresentationSettings {
+    fn from_settings(settings: &Settings) -> Self {
+        Self {
+            profiles: settings.mail_profiles.clone(),
+            show_markers: settings.show_account_badges,
+            account_colors: settings.account_colors.clone(),
+            account_short_names: settings.account_short_names.clone(),
+        }
+    }
+
+    fn profile(&self, account_id: i64) -> Option<&MailProfile> {
+        self.profiles
+            .iter()
+            .find(|profile| profile.account_ids.contains(&account_id))
+    }
+
+    fn marker_color(&self, account_id: i64) -> slint::Color {
+        let configured = self
+            .profile(account_id)
+            .map(|profile| profile.color.as_str())
+            .or_else(|| {
+                self.account_colors
+                    .get(&account_id.to_string())
+                    .map(String::as_str)
+            });
+        configured
+            .and_then(parse_marker_color)
+            .unwrap_or_else(|| fallback_account_color(account_id))
+    }
+
+    fn has_account_color(&self, account_id: i64) -> bool {
+        self.account_colors.contains_key(&account_id.to_string())
+    }
+
+    fn account_label<'a>(&'a self, account_id: i64, fallback: &'a str) -> &'a str {
+        self.account_short_names
+            .get(&account_id.to_string())
+            .map(String::as_str)
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or(fallback)
+    }
+
+    fn remove_account(&mut self, account_id: i64) {
+        for profile in &mut self.profiles {
+            profile.account_ids.retain(|id| *id != account_id);
+        }
+        let key = account_id.to_string();
+        self.account_colors.remove(&key);
+        self.account_short_names.remove(&key);
+    }
+}
+
+fn parse_marker_color(value: &str) -> Option<slint::Color> {
+    value
+        .strip_prefix('#')
+        .filter(|hex| hex.len() == 6)
+        .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+        .map(|rgb| {
+            slint::Color::from_rgb_u8(
+                ((rgb >> 16) & 0xff) as u8,
+                ((rgb >> 8) & 0xff) as u8,
+                (rgb & 0xff) as u8,
+            )
+        })
+}
+
+fn fallback_account_color(account_id: i64) -> slint::Color {
+    const COLORS: [(u8, u8, u8); 8] = [
+        (0x3b, 0x82, 0xf6),
+        (0x8b, 0x5c, 0xf6),
+        (0x0d, 0x94, 0x88),
+        (0xea, 0x58, 0x0c),
+        (0xdb, 0x27, 0x77),
+        (0x65, 0xa3, 0x0d),
+        (0x08, 0x91, 0xb2),
+        (0x93, 0x33, 0xea),
+    ];
+    let (red, green, blue) = COLORS[account_id.unsigned_abs() as usize % COLORS.len()];
+    slint::Color::from_rgb_u8(red, green, blue)
+}
+
 struct InboxState {
     core: Option<CoreMailSource>,
     email_renderer: Rc<RefCell<GpuEmailRenderer>>,
@@ -453,6 +553,7 @@ struct InboxState {
     favicon_tx: UiSender<FaviconUpdate>,
     connected_accounts: Vec<Account>,
     account_configs: Vec<AccountConfig>,
+    account_presentation: AccountPresentationSettings,
     calendar_connections: Vec<CalendarConnection>,
     carddav_connections: Vec<CardDavConnection>,
     calendar_errors: HashMap<i64, String>,
@@ -485,6 +586,13 @@ enum MailDropDestination {
     Folder(i64),
     Label(i64),
     Route(String),
+}
+
+fn navigation_label_id(scope: &str) -> Option<i64> {
+    ["AccountLabel:", "GlobalLabel:", "Category:", "Label:"]
+        .into_iter()
+        .find_map(|prefix| scope.strip_prefix(prefix))
+        .and_then(|id| id.parse().ok())
 }
 
 fn mail_drag_payload(data: &DataTransfer) -> Option<Rc<MailDragPayload>> {
@@ -549,16 +657,22 @@ fn resolve_single_mail_drop(
     let destination = match target_scope {
         "Important" => MailDropDestination::Route("important".to_owned()),
         "Other" => MailDropDestination::Route("other".to_owned()),
-        scope if scope.starts_with("Label:") => {
-            let label_id = scope
-                .strip_prefix("Label:")
-                .and_then(|id| id.parse::<i64>().ok())
+        scope if navigation_label_id(scope).is_some() => {
+            let label_id = navigation_label_id(scope)
                 .ok_or_else(|| "label destination is invalid".to_owned())?;
             let label = state
                 .labels
                 .iter()
                 .find(|label| label.id == label_id)
                 .ok_or_else(|| "label destination is no longer available".to_owned())?;
+            if let Some(owner_account_id) = label.owner_account_id
+                && owner_account_id != message.account_id
+            {
+                return Err(format!(
+                    "this label belongs to another account; choose a label for {}",
+                    message.account
+                ));
+            }
             if message.labels.contains(&label_id) {
                 return Err("message already has this label".to_owned());
             }
@@ -799,7 +913,10 @@ impl InboxState {
             unified_mailboxes: Vec::new(),
             mail_work: None,
             collapsed_folder_ids: HashSet::new(),
-            collapsed_sidebar_sections: HashSet::from(["categories".into(), "labels".into()]),
+            collapsed_sidebar_sections: HashSet::from([
+                "categories".into(),
+                "global-labels".into(),
+            ]),
             sidebar_rows: Rc::new(SidebarModel::default()),
             folder_filter: String::new(),
             inbox_count: 0,
@@ -827,6 +944,7 @@ impl InboxState {
             favicon_tx,
             connected_accounts: Vec::new(),
             account_configs: Vec::new(),
+            account_presentation: AccountPresentationSettings::default(),
             calendar_connections: Vec::new(),
             carddav_connections: Vec::new(),
             calendar_errors: HashMap::new(),
@@ -3310,6 +3428,10 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
                         state.mark_read_on_open = settings
                             .as_ref()
                             .is_none_or(|settings| settings.mark_read_on_open);
+                        if let Some(settings) = settings.as_ref() {
+                            state.account_presentation =
+                                AccountPresentationSettings::from_settings(settings);
+                        }
                         state.favicon_loader = if allow_remote_images {
                             match FaviconLoader::new() {
                                 Ok(loader) => Some(loader),
@@ -4395,6 +4517,33 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
     });
 
     let app_weak = app.as_weak();
+    let state_for_bulk_action = Rc::clone(&state);
+    let runtime_for_bulk_action = Rc::clone(&runtime);
+    app.on_bulk_message_action(move |action| {
+        let Some(app) = app_weak.upgrade() else {
+            return;
+        };
+        let Some(trigger_id) = state_for_bulk_action
+            .borrow()
+            .checked_ids
+            .iter()
+            .next()
+            .copied()
+        else {
+            return;
+        };
+        if let Err(error) = perform_mail_list_action(
+            &app,
+            &state_for_bulk_action,
+            &runtime_for_bulk_action,
+            trigger_id,
+            &action,
+        ) {
+            app.set_render_status(UiMessage::detail("Message action failed: {}", error));
+        }
+    });
+
+    let app_weak = app.as_weak();
     let state_for_label = Rc::clone(&state);
     app.on_toggle_mail_label(move |label_id, applied| {
         let Some(app) = app_weak.upgrade() else {
@@ -4429,17 +4578,20 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
     let app_weak = app.as_weak();
     let state_for_save_label = Rc::clone(&state);
     let runtime_for_save_label = Rc::clone(&runtime);
-    app.on_save_mail_label(move |label_id, name, color| {
+    app.on_save_mail_label(move |label_id, owner_account_id, name, color, global| {
         let Some(app) = app_weak.upgrade() else {
             return;
         };
-        let (core, thread_id) = {
+        let (core, thread_id, selected_account_id) = {
             let state = state_for_save_label.borrow();
-            let thread_id = state
+            let selected = state
                 .selected_id
-                .and_then(|id| state.messages.iter().find(|message| message.id == id))
-                .and_then(|message| message.thread_id);
-            (state.core.clone(), thread_id)
+                .and_then(|id| state.messages.iter().find(|message| message.id == id));
+            (
+                state.core.clone(),
+                selected.and_then(|message| message.thread_id),
+                selected.map(|message| message.account_id),
+            )
         };
         let existing_id = (label_id >= 0).then_some(i64::from(label_id));
         let color = format!(
@@ -4454,8 +4606,19 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
                 existing_id,
                 name.as_str(),
                 color.as_str(),
+                if existing_id.is_none() && !global {
+                    Some(if owner_account_id >= 0 {
+                        i64::from(owner_account_id)
+                    } else {
+                        selected_account_id.ok_or_else(|| {
+                            "select a message before creating an account label".to_owned()
+                        })?
+                    })
+                } else {
+                    None
+                },
             ))?;
-            if existing_id.is_none() {
+            if existing_id.is_none() && owner_account_id < 0 {
                 let thread_id = thread_id.ok_or_else(|| "no message is selected".to_owned())?;
                 runtime_for_save_label
                     .block_on(core.perform_label_action(thread_id, label.id, true))?;
@@ -4471,6 +4634,9 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
         })();
         match result {
             Ok(true) => app.set_render_status(UiMessage::plain("Label updated.")),
+            Ok(false) if owner_account_id >= 0 => {
+                app.set_render_status(UiMessage::plain("Label created."))
+            }
             Ok(false) => app.set_render_status(UiMessage::plain("Label created and added.")),
             Err(error) => {
                 app.set_render_status(UiMessage::detail("Could not save label: {}", error))
@@ -4505,7 +4671,7 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
             runtime_for_delete_label.block_on(core.delete_label(label_id))?;
             {
                 let mut state = state_for_delete_label.borrow_mut();
-                if state.scope == format!("Label:{label_id}") {
+                if navigation_label_id(&state.scope) == Some(label_id) {
                     state.scope = "Unified Inbox".to_owned();
                     state.page = 1;
                     state.next_cursor = None;

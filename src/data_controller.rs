@@ -8,8 +8,118 @@
 use super::*;
 use chrono::Utc;
 use flectar_mail_core::models::{PortableAccountConfig, Settings};
+use serde::{Deserialize, Serialize};
 
 const MAX_ACCOUNT_BACKUP_BYTES: u64 = 1024 * 1024;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PortableMailProfile {
+    name: String,
+    color: String,
+    #[serde(default)]
+    account_emails: Vec<String>,
+}
+
+fn portable_account_colors(
+    backup: &serde_json::Value,
+    imported_emails: &HashSet<String>,
+) -> Result<Option<HashMap<String, String>>, String> {
+    let Some(value) = backup
+        .get("preferences")
+        .and_then(|preferences| preferences.get("accountColors"))
+    else {
+        return Ok(None);
+    };
+    let colors = serde_json::from_value::<HashMap<String, String>>(value.clone())
+        .map_err(|error| format!("invalid account color data: {error}"))?;
+    if colors.len() > 100 {
+        return Err("backup contains more than 100 account colors".into());
+    }
+    let mut normalized = HashMap::new();
+    for (email, color) in colors {
+        let email = email.trim().to_ascii_lowercase();
+        if !imported_emails.contains(&email) {
+            return Err(format!(
+                "account color references an account outside the backup: {email:?}"
+            ));
+        }
+        let valid_color = color.len() == 7
+            && color.starts_with('#')
+            && color[1..]
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit());
+        if !valid_color {
+            return Err(format!("account {email:?} has an invalid color"));
+        }
+        if normalized.insert(email.clone(), color).is_some() {
+            return Err(format!("backup contains duplicate account color {email:?}"));
+        }
+    }
+    Ok(Some(normalized))
+}
+
+fn portable_mail_profiles(
+    backup: &serde_json::Value,
+    imported_emails: &HashSet<String>,
+) -> Result<Option<Vec<PortableMailProfile>>, String> {
+    let Some(value) = backup
+        .get("preferences")
+        .and_then(|preferences| preferences.get("mailProfiles"))
+    else {
+        return Ok(None);
+    };
+    let profiles = serde_json::from_value::<Vec<PortableMailProfile>>(value.clone())
+        .map_err(|error| format!("invalid profile data: {error}"))?;
+    if profiles.len() > 50 {
+        return Err("backup contains more than 50 profiles".into());
+    }
+    let mut assigned_emails = HashSet::new();
+    let mut profile_names = HashSet::new();
+    for profile in &profiles {
+        let profile_name = profile.name.trim();
+        if profile_name.is_empty()
+            || profile_name.chars().count() > 48
+            || profile_name.chars().any(char::is_control)
+        {
+            return Err("backup contains an invalid profile name".into());
+        }
+        let valid_color = profile.color.len() == 7
+            && profile.color.starts_with('#')
+            && profile.color[1..]
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit());
+        if !valid_color {
+            return Err(format!("profile {profile_name:?} has an invalid color"));
+        }
+        if !profile_names.insert(profile_name.to_ascii_lowercase()) {
+            return Err(format!(
+                "backup contains more than one profile named {:?}",
+                profile.name
+            ));
+        }
+        if profile.account_emails.len() > 100 {
+            return Err(format!(
+                "profile {:?} contains more than 100 accounts",
+                profile.name
+            ));
+        }
+        for email in &profile.account_emails {
+            let email = email.trim().to_ascii_lowercase();
+            if !imported_emails.contains(&email) {
+                return Err(format!(
+                    "profile {:?} references an account outside the backup",
+                    profile.name
+                ));
+            }
+            if !assigned_emails.insert(email.clone()) {
+                return Err(format!(
+                    "account {email:?} is assigned to more than one profile"
+                ));
+            }
+        }
+    }
+    Ok(Some(profiles))
+}
 
 fn read_account_backup(path: &std::path::Path) -> Result<Vec<u8>, String> {
     use std::io::Read;
@@ -121,6 +231,28 @@ pub(super) fn register_data_management_callbacks(
             .as_ref()
             .and_then(|core| runtime_for_backup.block_on(core.load_settings()).ok())
             .map(|settings| {
+                let mail_profiles = settings
+                    .mail_profiles
+                    .iter()
+                    .map(|profile| PortableMailProfile {
+                        name: profile.name.clone(),
+                        color: profile.color.clone(),
+                        account_emails: configs
+                            .iter()
+                            .filter(|account| profile.account_ids.contains(&account.id))
+                            .map(|account| account.email.clone())
+                            .collect(),
+                    })
+                    .collect::<Vec<_>>();
+                let account_colors = configs
+                    .iter()
+                    .filter_map(|account| {
+                        settings
+                            .account_colors
+                            .get(&account.id.to_string())
+                            .map(|color| (account.email.clone(), color.clone()))
+                    })
+                    .collect::<HashMap<_, _>>();
                 serde_json::json!({
                     "theme": settings.theme,
                     "showAvatars": settings.show_avatars,
@@ -134,7 +266,10 @@ pub(super) fn register_data_management_callbacks(
                     "notificationScope": settings.notification_scope,
                     "soundEnabled": settings.sound_enabled,
                     "syncIntervalMinutes": settings.sync_interval_minutes,
-                    "closeToTray": settings.close_to_tray
+                    "closeToTray": settings.close_to_tray,
+                    "showAccountMarkers": settings.show_account_badges,
+                    "accountColors": account_colors,
+                    "mailProfiles": mail_profiles
                 })
             })
             .unwrap_or_else(|| serde_json::json!({}));
@@ -288,6 +423,16 @@ pub(super) fn register_data_management_callbacks(
             if configs.len() > 100 {
                 return Err("backup contains more than 100 accounts".into());
             }
+            let imported_emails = configs
+                .iter()
+                .map(|config| config.email.trim().to_ascii_lowercase())
+                .collect::<HashSet<_>>();
+            let portable_profiles = portable_mail_profiles(&backup, &imported_emails)?;
+            let has_portable_profiles = portable_profiles.is_some();
+            let portable_profiles = portable_profiles.unwrap_or_default();
+            let portable_colors = portable_account_colors(&backup, &imported_emails)?;
+            let has_portable_colors = portable_colors.is_some();
+            let portable_colors = portable_colors.unwrap_or_default();
 
             let mut settings = runtime_for_backup_import.block_on(core.load_settings())?;
             if let Some(preferences) = backup.get("preferences") {
@@ -374,6 +519,12 @@ pub(super) fn register_data_management_callbacks(
                 {
                     settings.close_to_tray = enabled;
                 }
+                if let Some(enabled) = preferences
+                    .get("showAccountMarkers")
+                    .and_then(|value| value.as_bool())
+                {
+                    settings.show_account_badges = enabled;
+                }
             }
 
             let imported = runtime_for_backup_import
@@ -381,6 +532,54 @@ pub(super) fn register_data_management_callbacks(
             runtime_for_backup_import.block_on(core.save_settings(settings.clone()))?;
             let accounts = runtime_for_backup_import.block_on(core.load_accounts())?;
             let configs = runtime_for_backup_import.block_on(core.load_account_configs())?;
+            let account_ids = accounts
+                .iter()
+                .map(|account| (account.email.trim().to_ascii_lowercase(), account.id))
+                .collect::<HashMap<_, _>>();
+            if has_portable_colors {
+                for email in &imported_emails {
+                    if let Some(account_id) = account_ids.get(email) {
+                        runtime_for_backup_import
+                            .block_on(core.set_account_color(*account_id, None))?;
+                    }
+                }
+                for (email, color) in portable_colors {
+                    if let Some(account_id) = account_ids.get(&email) {
+                        runtime_for_backup_import
+                            .block_on(core.set_account_color(*account_id, Some(color)))?;
+                    }
+                }
+            }
+            if has_portable_profiles {
+                for email in &imported_emails {
+                    if let Some(account_id) = account_ids.get(email) {
+                        runtime_for_backup_import
+                            .block_on(core.assign_account_profile(*account_id, None))?;
+                    }
+                }
+            }
+            for profile in portable_profiles {
+                let current = runtime_for_backup_import.block_on(core.load_settings())?;
+                let existing_id = current
+                    .mail_profiles
+                    .iter()
+                    .find(|candidate| candidate.name.eq_ignore_ascii_case(profile.name.trim()))
+                    .map(|candidate| candidate.id.clone());
+                let (_, saved) = runtime_for_backup_import.block_on(core.save_mail_profile(
+                    existing_id,
+                    profile.name,
+                    profile.color,
+                ))?;
+                for email in profile.account_emails {
+                    if let Some(account_id) = account_ids.get(&email.trim().to_ascii_lowercase()) {
+                        runtime_for_backup_import.block_on(core.assign_account_profile(
+                            *account_id,
+                            Some(saved.id.clone()),
+                        ))?;
+                    }
+                }
+            }
+            settings = runtime_for_backup_import.block_on(core.load_settings())?;
             Ok((imported, settings, accounts, configs))
         })();
 
@@ -388,6 +587,8 @@ pub(super) fn register_data_management_callbacks(
             Ok((imported, settings, accounts, configs)) => {
                 let total = accounts.len();
                 apply_language(&app, &settings.language);
+                state_for_backup_import.borrow_mut().account_presentation =
+                    AccountPresentationSettings::from_settings(&settings);
                 update_connected_accounts(
                     &app,
                     &state_for_backup_import,
@@ -395,6 +596,7 @@ pub(super) fn register_data_management_callbacks(
                     accounts,
                     configs,
                 );
+                refresh_rows_only(&app, &state_for_backup_import, &runtime_for_backup_import);
                 app.set_theme_mode(
                     match settings.theme.as_str() {
                         "carbon" | "dark" => "dark",
@@ -405,6 +607,7 @@ pub(super) fn register_data_management_callbacks(
                 );
                 app.set_monochrome_sidebar_icons(settings.monochrome_sidebar_icons);
                 app.set_show_avatars(settings.show_avatars);
+                app.set_show_account_markers(settings.show_account_badges);
                 app.set_workspace_layout(settings.workspace_layout.clone().into());
                 app.set_notifications_enabled(settings.notifications_enabled);
                 app.set_notification_sound_enabled(settings.sound_enabled);
@@ -463,6 +666,7 @@ pub(super) fn register_data_management_callbacks(
                         let mut state = data_reset_state.borrow_mut();
                         state.connected_accounts.clear();
                         state.account_configs.clear();
+                        state.account_presentation = AccountPresentationSettings::default();
                         state.calendar_connections.clear();
                         state.messages.clear();
                         state.mailboxes.clear();
@@ -508,6 +712,7 @@ pub(super) fn register_data_management_callbacks(
                     app.set_theme_mode("system".into());
                     app.set_monochrome_sidebar_icons(false);
                     app.set_show_avatars(true);
+                    app.set_show_account_markers(false);
                     app.set_workspace_layout("default".into());
                     app.set_notifications_enabled(true);
                     app.set_notification_sound_enabled(true);
@@ -548,4 +753,81 @@ pub(super) fn register_data_management_callbacks(
             let _ = updates.send(result).await;
         });
     });
+}
+
+#[cfg(test)]
+mod portable_profile_tests {
+    use super::*;
+
+
+    #[test]
+    fn portable_profiles_distinguish_legacy_backups_from_explicit_unassignment() {
+        let emails = HashSet::from(["alice@example.org".to_owned()]);
+        let legacy = serde_json::json!({ "preferences": {} });
+        assert!(portable_mail_profiles(&legacy, &emails).unwrap().is_none());
+
+        let explicit_empty = serde_json::json!({
+            "preferences": { "mailProfiles": [] }
+        });
+        assert_eq!(
+            portable_mail_profiles(&explicit_empty, &emails)
+                .unwrap()
+                .unwrap()
+                .len(),
+            0
+        );
+    }
+
+    #[test]
+    fn portable_profiles_reject_cross_backup_and_duplicate_membership() {
+        let emails = HashSet::from([
+            "alice@example.org".to_owned(),
+            "bob@example.org".to_owned(),
+        ]);
+        let duplicate = serde_json::json!({
+            "preferences": { "mailProfiles": [
+                { "name": "Work", "color": "#3B82F6", "accountEmails": ["alice@example.org"] },
+                { "name": "Personal", "color": "#EA580C", "accountEmails": ["ALICE@example.org"] }
+            ] }
+        });
+        assert!(portable_mail_profiles(&duplicate, &emails).is_err());
+
+        let outside = serde_json::json!({
+            "preferences": { "mailProfiles": [
+                { "name": "Work", "color": "#3B82F6", "accountEmails": ["mallory@example.org"] }
+            ] }
+        });
+        assert!(portable_mail_profiles(&outside, &emails).is_err());
+    }
+
+    #[test]
+    fn portable_account_colors_are_optional_validated_and_normalized() {
+        let emails = HashSet::from(["work@example.com".to_owned()]);
+        let legacy = serde_json::json!({ "preferences": {} });
+        assert!(portable_account_colors(&legacy, &emails).unwrap().is_none());
+
+        let valid = serde_json::json!({
+            "preferences": {
+                "accountColors": { " Work@Example.com ": "#f97316" }
+            }
+        });
+        let colors = portable_account_colors(&valid, &emails)
+            .unwrap()
+            .unwrap();
+        assert_eq!(colors.get("work@example.com").map(String::as_str), Some("#f97316"));
+
+        let invalid = serde_json::json!({
+            "preferences": {
+                "accountColors": { "work@example.com": "orange" }
+            }
+        });
+        assert!(portable_account_colors(&invalid, &emails).is_err());
+
+        let outside = serde_json::json!({
+            "preferences": {
+                "accountColors": { "other@example.com": "#000000" }
+            }
+        });
+        assert!(portable_account_colors(&outside, &emails).is_err());
+    }
 }

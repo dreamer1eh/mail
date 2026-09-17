@@ -54,6 +54,7 @@ component SidebarCountBadge inherits Rectangle {
 // selection, hover, and counts remain consistent throughout the tree.
 export component SidebarItem inherits SidebarRowSurface {
     in property <string> label;
+    in property <string> accessible-name: root.label;
     in property <string> count;
     in property <string> scope;
     in property <image> icon;
@@ -69,6 +70,8 @@ export component SidebarItem inherits SidebarRowSurface {
     in property <bool> expanded: true;
     in property <bool> manageable: false;
     in property <bool> label-manageable: false;
+    in property <bool> label-is-global: false;
+    in property <string> label-account-name: "";
     in property <bool> mail-drop-enabled: false;
     in property <bool> mail-drop-copies: false;
     in property <color> sidebar-background;
@@ -83,8 +86,8 @@ export component SidebarItem inherits SidebarRowSurface {
     callback new-subfolder(int, int, string);
     callback rename-folder(int, string);
     callback delete-folder(int, string);
-    callback rename-label(int, string, color);
-    callback delete-label(int, string);
+    callback rename-label(int, string, color, string, bool);
+    callback delete-label(int, string, string, bool);
 
     height: root.visible ? root.row-height : 0px;
     idle-background: root.sidebar-background;
@@ -140,7 +143,7 @@ export component SidebarItem inherits SidebarRowSurface {
 
     row-hit := TouchArea {
         accessible-role: button;
-        accessible-label: root.label;
+        accessible-label: root.accessible-name;
         accessible-checked: root.selected;
         accessible-action-default => { root.clicked(root.scope); }
         clicked => { root.clicked(root.scope); }
@@ -190,13 +193,13 @@ export component SidebarItem inherits SidebarRowSurface {
         height: parent.height;
         Menu {
             MenuItem {
-                title: @tr("Rename label");
-                activated => { root.rename-label(root.label-id, root.label, root.editable-color); }
+                title: root.label-is-global ? @tr("Rename global label") : @tr("Rename label in {}", root.label-account-name);
+                activated => { root.rename-label(root.label-id, root.label, root.editable-color, root.label-account-name, root.label-is-global); }
             }
 
             MenuItem {
-                title: @tr("Delete label");
-                activated => { root.delete-label(root.label-id, root.label); }
+                title: root.label-is-global ? @tr("Delete global label") : @tr("Delete label from {}", root.label-account-name);
+                activated => { root.delete-label(root.label-id, root.label, root.label-account-name, root.label-is-global); }
             }
         }
     }
@@ -214,14 +217,6 @@ export component SidebarItem inherits SidebarRowSurface {
             ) ? (root.mail-drop-copies ? DragAction.copy : DragAction.move) : DragAction.none
         }
         dropped(event) => {
-            if !MailDragApi.can-drop-on-mailbox(
-                event.data,
-                root.scope,
-                root.account-id,
-                root.folder-id,
-            ) {
-                return DragAction.none;
-            }
             if MailDragApi.drop-on-mailbox(
                 event.data,
                 root.scope,

@@ -3,7 +3,7 @@ import { RendererSettings } from "../renderer-settings.slint";
 import { MailSecurityFields } from "../components/mail-security-fields.slint";
 import { OAuthBrowserHelp } from "../components/oauth-browser-help.slint";
 import { HorizontalBox, ScrollView, VerticalBox } from "std-widgets.slint";
-import { AccountRow } from "../models.slint";
+import { AccountRow, MailProfileRow } from "../models.slint";
 import { Avatar } from "../components/avatar.slint";
 import { Button } from "../components/button.slint";
 import { ConfirmationDialog } from "../components/confirmation-dialog.slint";
@@ -11,7 +11,7 @@ import { IconButton, LineEdit, RadioButton, Switch } from "../components/control
 import { CopyableDiagnostic } from "../components/copyable-diagnostic.slint";
 import { ProviderButton } from "../components/provider-button.slint";
 import { FormField, SettingsCard, SettingsLinkRow, SettingsNavItem, SettingsSelectRow, SettingsSwitchRow, ShortcutRow } from "../components/settings-components.slint";
-import { ThemeEditor } from "../components/theme-editor.slint";
+import { RuntimeColorPicker, ThemeEditor } from "../components/theme-editor.slint";
 import { TypeScale } from "../typography.slint";
 import { AppTheme, LayoutMetrics } from "../design-system.slint";
 import { CompactPageHeader, WorkspaceSidebarSurface } from "../components/workspace-layout.slint";
@@ -49,9 +49,40 @@ component AccountActions inherits GridLayout {
     }
 }
 
+component ProfileColorChoice inherits FocusScope {
+    in property <color> value;
+    in property <bool> selected: false;
+    in property <string> label;
+    callback chosen;
+
+    focus-on-click: true;
+    focus-on-tab-navigation: true;
+    accessible-role: radio-button;
+    accessible-label: root.label;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.chosen(); }
+    key-pressed(event) => {
+        if event.text == Key.Return || event.text == Key.Space {
+            root.chosen();
+            return accept;
+        }
+        reject
+    }
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: self.width / 2;
+        border-width: root.selected || root.has-focus ? 3px : 1px;
+        border-color: root.selected || root.has-focus ? AppTheme.heading : AppTheme.border;
+        background: root.value;
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { root.focus(); root.chosen(); } }
+}
+
 export component SettingsDialog inherits Rectangle {
     in property <bool> compact: false;
     in property <[AccountRow]> connected_accounts: [];
+    in property <[MailProfileRow]> mail_profiles: [];
     in property <bool> custom_oauth_configured: false;
     in property <bool> google_oauth_available: false;
     in property <bool> microsoft_oauth_available: false;
@@ -81,6 +112,7 @@ export component SettingsDialog inherits Rectangle {
     in-out property <string> settings_tab: "General";
     in-out property <string> theme_mode: "system";
     in-out property <bool> show_avatars: true;
+    in-out property <bool> show_account_markers: false;
     in-out property <string> workspace_layout: "default";
     in-out property <string> language_mode: "system";
     in-out property <bool> monochrome_sidebar_icons: false;
@@ -132,10 +164,31 @@ export component SettingsDialog inherits Rectangle {
     in-out property <int> delete_account_id: -1;
     in-out property <string> delete_account_name: "";
     private property <bool> compact-nav-open: false;
+    private property <bool> profile-editor-open: false;
+    private property <string> profile-editor-id: "";
+    private property <string> profile-editor-name: "";
+    private property <color> profile-editor-color: #3b82f6;
+    private property <bool> profile-editor-custom-color: false;
+    private property <bool> delete-profile-confirmation: false;
+    private property <string> delete-profile-id: "";
+    private property <string> delete-profile-name: "";
+    private property <bool> account-profile-picker-open: false;
+    private property <int> account-profile-picker-id: -1;
+    private property <string> account-profile-picker-name: "";
+    private property <string> account-profile-picker-current-id: "";
+    private property <color> account-profile-picker-color: #3b82f6;
+    private property <bool> account-profile-picker-has-custom-color: false;
+    private property <bool> account-profile-picker-custom-color: false;
+    private property <string> profile-editor-error: "";
     callback save_theme(string);
     callback save_theme_preset(string);
     callback save_custom_theme(color, color, color, color, color, color, color, color, color, color) -> bool;
     callback save_avatar_visibility(bool);
+    callback save_mail_profile(string, string, color) -> string;
+    callback assign_account_profile(int, string);
+    callback save_account_color(int, color, bool);
+    callback delete_mail_profile(string);
+    callback save_account_markers_visibility(bool);
     callback save_workspace_layout(string);
     callback save_language(string);
     callback save_sidebar_icon_style(bool);
@@ -186,6 +239,10 @@ export component SettingsDialog inherits Rectangle {
         @tr("1 year"),
         @tr("All mail"),
     ];
+    private property <[color]> profile-colors: [
+        #3b82f6, #8b5cf6, #0d9488, #ea580c,
+        #db2777, #65a30d, #0891b2, #9333ea,
+    ];
     private property <int> sync-interval-index: root.sync_interval_minutes <= 1 ? 0
         : root.sync_interval_minutes <= 5 ? 1 : 2;
     private property <int> notification-index: !root.notifications_enabled ? 0
@@ -195,6 +252,8 @@ export component SettingsDialog inherits Rectangle {
         if !root.settings_open {
             theme-editor.discard-changes();
             root.close-caldav-settings();
+            root.profile-editor-open = false;
+            root.account-profile-picker-open = false;
             root.imap_form_open = false;
             root.imap_editing = false;
         }
@@ -285,6 +344,71 @@ export component SettingsDialog inherits Rectangle {
         root.smtp_port = "465";
         root.show_account_status = false;
         root.imap_form_open = true;
+    }
+
+    function open-new-profile(name: string, color: color) {
+        root.profile-editor-id = "";
+        root.profile-editor-name = name;
+        root.profile-editor-color = color;
+        root.profile-editor-custom-color = false;
+        root.profile-editor-error = "";
+        root.profile-editor-open = true;
+    }
+
+    function edit-profile(profile: MailProfileRow) {
+        root.profile-editor-id = profile.id;
+        root.profile-editor-name = profile.name;
+        root.profile-editor-color = profile.color;
+        root.profile-editor-custom-color = !root.profile-color-is-preset(profile.color);
+        root.profile-editor-error = "";
+        root.profile-editor-open = true;
+    }
+
+    function close-profile-editor() {
+        root.profile-editor-open = false;
+        root.profile-editor-id = "";
+        root.profile-editor-name = "";
+        root.profile-editor-custom-color = false;
+        root.profile-editor-error = "";
+    }
+
+    function confirm-profile-removal(profile: MailProfileRow) {
+        root.delete-profile-id = profile.id;
+        root.delete-profile-name = profile.name;
+        root.delete-profile-confirmation = true;
+    }
+
+    function open-account-profile-picker(account: AccountRow) {
+        root.account-profile-picker-id = account.id;
+        root.account-profile-picker-name = account.name;
+        root.account-profile-picker-current-id = account.profile_id;
+        root.account-profile-picker-color = account.profile_color;
+        root.account-profile-picker-has-custom-color = account.has_account_color;
+        root.account-profile-picker-custom-color = false;
+        root.account-profile-picker-open = true;
+    }
+
+    pure function profile-color-is-preset(value: color) -> bool {
+        return value == #3b82f6 || value == #8b5cf6 || value == #0d9488 || value == #ea580c
+            || value == #db2777 || value == #65a30d || value == #0891b2 || value == #9333ea;
+    }
+
+    function close-account-profile-picker() {
+        root.account-profile-picker-open = false;
+        root.account-profile-picker-id = -1;
+        root.account-profile-picker-name = "";
+        root.account-profile-picker-current-id = "";
+        root.account-profile-picker-custom-color = false;
+    }
+
+    function choose-account-profile(profile-id: string) {
+        root.assign_account_profile(root.account-profile-picker-id, profile-id);
+        root.close-account-profile-picker();
+    }
+
+    function choose-account-color(color: color, generated: bool) {
+        root.save_account_color(root.account-profile-picker-id, color, generated);
+        root.close-account-profile-picker();
     }
 
     function open-caldav-settings(account: AccountRow) {
@@ -700,6 +824,139 @@ export component SettingsDialog inherits Rectangle {
                                 font-size: TypeScale.secondary;
                             }
                             Rectangle {
+                                height: root.compact ? 176px : 126px;
+                                background: root.surface;
+                                border-radius: 10px;
+                                border-width: 1px;
+                                border-color: root.border-subtle;
+
+                                Text {
+                                    x: 20px; y: 16px;
+                                    width: parent.width - (root.compact ? 40px : 180px);
+                                    height: 24px;
+                                    text: @tr("Profiles");
+                                    color: root.heading;
+                                    font-size: TypeScale.subtitle;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                                Text {
+                                    x: 20px; y: 43px;
+                                    width: parent.width - 40px;
+                                    height: root.compact ? 38px : 20px;
+                                    text: @tr("Group accounts as Personal or Work and identify them by color in the mail list.");
+                                    color: root.faint-text;
+                                    font-size: TypeScale.caption;
+                                    wrap: word-wrap;
+                                    vertical-alignment: center;
+                                }
+                                if !root.compact : Button {
+                                    x: parent.width - self.width - 20px; y: 14px;
+                                    width: 126px; height: 32px;
+                                    text: @tr("Add profile");
+                                    icon: @image-url("../icons/lucide/outline/plus.svg");
+                                    has-icon: true;
+                                    primary: true;
+                                    clicked => { root.open-new-profile("", #3b82f6); }
+                                }
+                                HorizontalBox {
+                                    x: 20px;
+                                    y: root.compact ? 88px : 76px;
+                                    width: parent.width - 40px;
+                                    height: root.compact ? 70px : 34px;
+                                    spacing: 10px;
+                                    Text {
+                                        horizontal-stretch: 1;
+                                        text: @tr("Show account color at the left edge of each message");
+                                        color: root.body-text;
+                                        font-size: TypeScale.secondary;
+                                        vertical-alignment: center;
+                                        wrap: word-wrap;
+                                    }
+                                    Switch {
+                                        checked: root.show_account_markers;
+                                        control-label: @tr("Show account color at the left edge of each message");
+                                        toggled => {
+                                            root.show_account_markers = self.checked;
+                                            root.save_account_markers_visibility(self.checked);
+                                        }
+                                    }
+                                    if root.compact : Button {
+                                        width: 112px; height: 40px;
+                                        text: @tr("Add profile");
+                                        primary: true;
+                                        clicked => { root.open-new-profile("", #3b82f6); }
+                                    }
+                                }
+                            }
+                            if root.mail_profiles.length == 0 : Rectangle {
+                                height: 58px;
+                                background: root.surface-raised;
+                                border-radius: 10px;
+                                border-width: 1px;
+                                border-color: root.border-subtle;
+                                Text {
+                                    x: 18px; y: 0px; width: parent.width - 36px; height: parent.height;
+                                    text: @tr("No profiles yet. Accounts keep their individual or generated colors until you create one.");
+                                    color: root.secondary-text;
+                                    font-size: TypeScale.secondary;
+                                    wrap: word-wrap;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            for profile in root.mail_profiles : Rectangle {
+                                height: 66px;
+                                background: root.surface;
+                                border-radius: 10px;
+                                border-width: 1px;
+                                border-color: root.border-subtle;
+                                Rectangle {
+                                    x: 16px; y: 13px; width: 8px; height: 40px;
+                                    border-radius: 4px;
+                                    background: profile.color;
+                                }
+                                Text {
+                                    x: 38px; y: 11px;
+                                    width: parent.width - 152px; height: 23px;
+                                    text: profile.name;
+                                    color: root.heading;
+                                    font-size: TypeScale.body-large;
+                                    font-weight: 700;
+                                    overflow: elide;
+                                    vertical-alignment: center;
+                                }
+                                Text {
+                                    x: 38px; y: 34px;
+                                    width: parent.width - 152px; height: 18px;
+                                    text: profile.account_count == 0 ? @tr("No accounts")
+                                        : profile.account_count == 1 ? @tr("1 account")
+                                        : @tr("{} accounts", profile.account_count);
+                                    color: root.faint-text;
+                                    font-size: TypeScale.caption;
+                                    vertical-alignment: center;
+                                }
+                                IconButton {
+                                    x: parent.width - 90px; y: 13px;
+                                    width: 38px; height: 38px;
+                                    icon: @image-url("../icons/lucide/outline/pencil.svg");
+                                    icon-color: root.secondary-text;
+                                    ghost: true;
+                                    hover-background: root.accent-soft;
+                                    tooltip-text: @tr("Edit profile");
+                                    clicked => { root.edit-profile(profile); }
+                                }
+                                IconButton {
+                                    x: parent.width - 48px; y: 13px;
+                                    width: 38px; height: 38px;
+                                    icon: @image-url("../icons/lucide/outline/trash.svg");
+                                    icon-color: AppTheme.destructive;
+                                    ghost: true;
+                                    hover-background: AppTheme.destructive.with-alpha(0.12);
+                                    tooltip-text: @tr("Delete profile");
+                                    clicked => { root.confirm-profile-removal(profile); }
+                                }
+                            }
+                            Rectangle {
                                 height: root.compact ? (root.oauth_in_progress ? 260px : 208px) : (root.oauth_in_progress ? 152px : 92px);
                                 background: root.surface;
                                 border-radius: 10px;
@@ -772,7 +1029,7 @@ export component SettingsDialog inherits Rectangle {
                                 private property <bool> separate-actions: root.compact || self.width < 780px;
                                 private property <length> actions-y: root.compact ? (account.sync_error != "" ? 116px : 84px) : account.sync_error != "" ? 112px : 88px;
                                 private property <length> divider-y: self.separate-actions ? self.actions-y + (self.stacked-actions ? 112px : 32px) + 12px : self.actions-y;
-                                height: self.divider-y + (root.compact ? (account.provider == "imap" ? 208px : 154px) : 71px);
+                                height: self.divider-y + (root.compact ? (account.provider == "imap" ? 266px : 212px) : 129px);
                                 can-drop(event) => root.read_account_transfer(event.data) != "" ? DragAction.move : DragAction.none;
                                 dropped(event) => {
                                     let source = root.read_account_transfer(event.data);
@@ -933,9 +1190,53 @@ export component SettingsDialog inherits Rectangle {
                                         description-color: root.faint-text;
                                         selected(index, value) => { root.select-mail-history(account.id, index); }
                                     }
+                                    Rectangle {
+                                        x: root.compact ? 24px : 32px;
+                                        y: drop-target.divider-y + (root.compact ? 70px : 66px);
+                                        width: parent.width - (root.compact ? 48px : 64px);
+                                        height: 50px;
+                                        background: transparent;
+                                        Text {
+                                            x: 0px; y: 4px;
+                                            width: parent.width - 146px; height: 20px;
+                                            text: @tr("Profile");
+                                            color: root.body-text;
+                                            font-size: TypeScale.body;
+                                            font-weight: 600;
+                                            vertical-alignment: center;
+                                        }
+                                        Text {
+                                            x: 0px; y: 25px;
+                                            width: parent.width - 146px; height: 18px;
+                                            text: account.has_profile
+                                                ? @tr("Uses the {} color in the mail list", account.profile_name)
+                                                : account.has_account_color
+                                                    ? @tr("Uses a custom account color")
+                                                    : @tr("Uses a generated account color");
+                                            color: root.faint-text;
+                                            font-size: TypeScale.caption;
+                                            overflow: elide;
+                                            vertical-alignment: center;
+                                        }
+                                        Button {
+                                            x: parent.width - self.width;
+                                            y: 8px;
+                                            width: 136px;
+                                            height: 34px;
+                                            text: account.has_profile ? account.profile_name : @tr("No profile");
+                                            clicked => { root.open-account-profile-picker(account); }
+                                        }
+                                        Rectangle {
+                                            x: parent.width - 126px;
+                                            y: 20px;
+                                            width: 10px; height: 10px;
+                                            border-radius: 5px;
+                                            background: account.profile_color;
+                                        }
+                                    }
                                     if root.compact && account.provider == "imap" : HorizontalBox {
                                         x: 24px;
-                                        y: drop-target.divider-y + 139px;
+                                        y: drop-target.divider-y + 197px;
                                         width: parent.width - 48px;
                                         height: 36px;
                                         spacing: 10px;
@@ -1570,6 +1871,225 @@ export component SettingsDialog inherits Rectangle {
             }
         }
 
+        Rectangle {
+            visible: root.settings_open && root.profile-editor-open;
+            width: parent.width;
+            height: parent.height;
+            background: #00000088;
+            z: 950;
+            accessible-role: groupbox;
+            accessible-label: root.profile-editor-id == "" ? @tr("Create profile") : @tr("Edit profile");
+
+            TouchArea { clicked => { root.close-profile-editor(); } }
+
+            profile-panel := Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: min(480px, parent.width - 24px);
+                height: min(root.profile-editor-custom-color ? 592px : 396px, parent.height - 24px);
+                background: root.surface;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: root.border-subtle;
+                drop-shadow-blur: 24px;
+                drop-shadow-offset-y: 8px;
+                drop-shadow-color: #00000055;
+
+                profile-focus := FocusScope {
+                    forward-focus: profile-name-field;
+                    key-pressed(event) => {
+                        if event.text == Key.Escape {
+                            root.close-profile-editor();
+                            return accept;
+                        }
+                        reject
+                    }
+                    ScrollView {
+                        width: parent.width;
+                        height: parent.height;
+                        viewport-width: self.visible-width;
+                        mouse-drag-pan-enabled: root.compact;
+                    VerticalBox {
+                        width: profile-panel.width;
+                        padding-top: 22px;
+                        padding-right: 22px;
+                        padding-bottom: 20px;
+                        padding-left: 22px;
+                        spacing: 14px;
+                        HorizontalBox {
+                            height: 44px;
+                            spacing: 12px;
+                            Rectangle {
+                                width: 44px; height: 44px;
+                                border-radius: 12px;
+                                background: root.profile-editor-color.transparentize(0.82);
+                                Rectangle {
+                                    x: 17px; y: 7px; width: 10px; height: 30px;
+                                    border-radius: 5px;
+                                    background: root.profile-editor-color;
+                                }
+                            }
+                            VerticalBox {
+                                spacing: 2px;
+                                Text { text: root.profile-editor-id == "" ? @tr("Create profile") : @tr("Edit profile"); color: root.title-color; font-size: TypeScale.heading; font-weight: 700; }
+                                Text { text: @tr("A local group for account colors and mail-list identification."); color: root.faint-text; font-size: TypeScale.caption; overflow: elide; }
+                            }
+                            Rectangle { horizontal-stretch: 1; }
+                            IconButton { width: 40px; height: 40px; icon: @image-url("../icons/lucide/outline/x.svg"); icon-color: root.secondary-text; ghost: true; hover-background: root.accent-soft; tooltip-text: @tr("Close"); clicked => { root.close-profile-editor(); } }
+                        }
+                        profile-name-field := FormField {
+                            height: 57px;
+                            label: @tr("Profile name");
+                            value: root.profile-editor-name;
+                            placeholder: @tr("Personal or Work");
+                            label-color: root.secondary-text;
+                            edited(value) => { root.profile-editor-name = value; root.profile-editor-error = ""; }
+                        }
+                        Text { height: 18px; text: @tr("Color"); color: root.secondary-text; font-size: TypeScale.caption; font-weight: 600; vertical-alignment: center; }
+                        HorizontalBox {
+                            height: 40px;
+                            spacing: profile-panel.width < 400px ? 4px : 8px;
+                            for swatch[index] in root.profile-colors : ProfileColorChoice {
+                                width: profile-panel.width < 400px ? 28px : 34px;
+                                height: self.width;
+                                value: swatch;
+                                selected: !root.profile-editor-custom-color && root.profile-editor-color == swatch;
+                                label: @tr("Profile color {}", index + 1);
+                                chosen => {
+                                    root.profile-editor-color = swatch;
+                                    root.profile-editor-custom-color = false;
+                                }
+                            }
+                        }
+                        Button {
+                            height: 34px;
+                            text: @tr("Custom color…");
+                            selected: root.profile-editor-custom-color;
+                            clicked => { root.profile-editor-custom-color = true; }
+                        }
+                        if root.profile-editor-custom-color : RuntimeColorPicker {
+                            height: 222px;
+                            value: root.profile-editor-color;
+                            edited(value) => { root.profile-editor-color = value; }
+                        }
+                        if root.profile-editor-error != "" : Text { height: 20px; text: root.profile-editor-error; color: AppTheme.destructive; font-size: TypeScale.caption; wrap: word-wrap; }
+                        Rectangle { vertical-stretch: 1; }
+                        HorizontalBox {
+                            height: root.compact ? 44px : 34px;
+                            spacing: 8px;
+                            Rectangle { horizontal-stretch: 1; }
+                            Button { height: parent.height; text: @tr("Cancel"); clicked => { root.close-profile-editor(); } }
+                            Button {
+                                height: parent.height;
+                                text: root.profile-editor-id == "" ? @tr("Create profile") : @tr("Save profile");
+                                primary: true;
+                                enabled: root.profile-editor-name != "";
+                                clicked => {
+                                    let saved-id = root.save_mail_profile(root.profile-editor-id, root.profile-editor-name, root.profile-editor-color);
+                                    if saved-id != "" {
+                                        root.close-profile-editor();
+                                    } else {
+                                        root.profile-editor-error = @tr("Could not save this profile. Check the name and try again.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            visible: root.settings_open && root.account-profile-picker-open;
+            width: parent.width;
+            height: parent.height;
+            background: #00000088;
+            z: 950;
+            accessible-role: groupbox;
+            accessible-label: @tr("Choose a profile for {}", root.account-profile-picker-name);
+
+            TouchArea { clicked => { root.close-account-profile-picker(); } }
+            profile-picker-panel := Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: min(460px, parent.width - 24px);
+                height: min(
+                    (root.account-profile-picker-custom-color ? 626px : 390px)
+                        + min(root.mail_profiles.length, 4) * 50px,
+                    parent.height - 24px,
+                );
+                background: root.surface;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: root.border-subtle;
+                drop-shadow-blur: 24px;
+                drop-shadow-offset-y: 8px;
+                drop-shadow-color: #00000055;
+                Text { x: 22px; y: 20px; width: parent.width - 44px; height: 26px; text: @tr("Choose profile"); color: root.title-color; font-size: TypeScale.heading; font-weight: 700; }
+                Text { x: 22px; y: 48px; width: parent.width - 44px; height: 22px; text: root.account-profile-picker-name; color: root.secondary-text; font-size: TypeScale.secondary; overflow: elide; }
+                ScrollView {
+                    x: 22px; y: 80px;
+                    width: parent.width - 44px;
+                    height: parent.height - 138px;
+                    mouse-drag-pan-enabled: root.compact;
+                    VerticalBox {
+                        spacing: 8px;
+                        Text { height: 20px; text: @tr("Profiles"); color: root.secondary-text; font-size: TypeScale.caption; font-weight: 700; vertical-alignment: center; }
+                        for profile in root.mail_profiles : Button {
+                            height: 42px;
+                            text: profile.name;
+                            selected: root.account-profile-picker-current-id == profile.id;
+                            clicked => { root.choose-account-profile(profile.id); }
+                        }
+                        Text { height: 20px; text: @tr("No profile · Account color"); color: root.secondary-text; font-size: TypeScale.caption; font-weight: 700; vertical-alignment: center; }
+                        Button {
+                            height: 42px;
+                            text: @tr("Generated color");
+                            selected: root.account-profile-picker-current-id == "" && !root.account-profile-picker-has-custom-color;
+                            clicked => { root.choose-account-color(root.account-profile-picker-color, true); }
+                        }
+                        HorizontalBox {
+                            height: 36px;
+                            spacing: profile-picker-panel.width < 390px ? 4px : 8px;
+                            for swatch[index] in root.profile-colors : ProfileColorChoice {
+                                width: profile-picker-panel.width < 390px ? 24px : 32px;
+                                height: self.width;
+                                value: swatch;
+                                selected: root.account-profile-picker-current-id == ""
+                                    && root.account-profile-picker-has-custom-color
+                                    && !root.account-profile-picker-custom-color
+                                    && root.account-profile-picker-color == swatch;
+                                label: @tr("Account color {}", index + 1);
+                                chosen => { root.choose-account-color(swatch, false); }
+                            }
+                        }
+                        Button {
+                            height: 38px;
+                            text: @tr("Custom color…");
+                            selected: root.account-profile-picker-custom-color
+                                || (root.account-profile-picker-current-id == ""
+                                    && root.account-profile-picker-has-custom-color
+                                    && !root.profile-color-is-preset(root.account-profile-picker-color));
+                            clicked => { root.account-profile-picker-custom-color = true; }
+                        }
+                        if root.account-profile-picker-custom-color : RuntimeColorPicker {
+                            height: 222px;
+                            value: root.account-profile-picker-color;
+                            edited(value) => { root.account-profile-picker-color = value; }
+                        }
+                        if root.account-profile-picker-custom-color : Button {
+                            height: 38px;
+                            text: @tr("Use custom color");
+                            primary: true;
+                            clicked => { root.choose-account-color(root.account-profile-picker-color, false); }
+                        }
+                    }
+                }
+                Button { x: parent.width - self.width - 22px; y: parent.height - 46px; height: 34px; text: @tr("Cancel"); clicked => { root.close-account-profile-picker(); } }
+            }
+        }
+
         ConfirmationDialog {
             width: parent.width;
             height: parent.height;
@@ -1606,4 +2126,23 @@ export component SettingsDialog inherits Rectangle {
             muted-color: root.secondary-text;
             confirmed => { root.delete_account(root.delete_account_id); }
         }
+        ConfirmationDialog {
+            width: parent.width;
+            height: parent.height;
+            open <=> root.delete-profile-confirmation;
+            title: @tr("Delete profile?");
+            subject: root.delete-profile-name;
+            description: @tr("Accounts assigned to this profile will return to their individual or generated account colors.");
+            detail: @tr("Accounts and provider data are not changed.");
+            confirm-label: @tr("Delete profile");
+            cancel-label: @tr("Keep profile");
+            icon: @image-url("../icons/lucide/outline/trash.svg");
+            surface: root.surface;
+            dialog-border-color: root.border-subtle;
+            title-color: root.title-color;
+            body-color: root.body-text;
+            muted-color: root.secondary-text;
+            confirmed => { root.delete_mail_profile(root.delete-profile-id); }
+        }
+
 }

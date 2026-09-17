@@ -111,6 +111,7 @@ pub(super) fn reconcile_removed_account(state: &mut InboxState, account_id: i64)
     state
         .account_configs
         .retain(|config| config.id != account_id);
+    state.account_presentation.remove_account(account_id);
     state
         .calendar_connections
         .retain(|connection| connection.account_id != account_id);
@@ -151,6 +152,7 @@ pub(super) fn apply_connected_accounts(
     carddav_connections: &[CardDavConnection],
     calendar_errors: &HashMap<i64, String>,
     avatars: &HashMap<i64, ProfileAvatarImages>,
+    presentation: &AccountPresentationSettings,
 ) {
     let configs: HashMap<i64, &AccountConfig> =
         configs.iter().map(|config| (config.id, config)).collect();
@@ -175,6 +177,7 @@ pub(super) fn apply_connected_accounts(
             let avatar = avatars.get(&account.id);
             let calendar = calendar_connections.get(&account.id);
             let carddav = carddav_connections.get(&account.id);
+            let profile = presentation.profile(account.id);
             Some(AccountRow {
                 id: i32::try_from(account.id).ok()?,
                 drag_key: account.id.to_string().into(),
@@ -192,6 +195,17 @@ pub(super) fn apply_connected_accounts(
                     .map(|images| slint_image(&images.small))
                     .unwrap_or_default(),
                 has_avatar: avatar.is_some(),
+                profile_id: profile
+                    .map(|profile| profile.id.clone())
+                    .unwrap_or_default()
+                    .into(),
+                profile_name: profile
+                    .map(|profile| profile.name.clone())
+                    .unwrap_or_default()
+                    .into(),
+                profile_color: presentation.marker_color(account.id),
+                has_profile: profile.is_some(),
+                has_account_color: presentation.has_account_color(account.id),
                 username: config.username.clone().into(),
                 jmap_url: config.jmap_url.clone().into(),
                 imap_security: config.settings.connection.imap_security.as_str().into(),
@@ -242,6 +256,33 @@ pub(super) fn apply_connected_accounts(
         })
         .collect::<Vec<_>>();
     apply_connected_account_rows(app, rows);
+    let known_accounts = accounts
+        .iter()
+        .map(|account| account.id)
+        .collect::<HashSet<_>>();
+    app.set_mail_profiles(ModelRc::new(VecModel::from(
+        presentation
+            .profiles
+            .iter()
+            .map(|profile| {
+                MailProfileRow {
+                    id: profile.id.clone().into(),
+                    name: profile.name.clone().into(),
+                    color: parse_marker_color(&profile.color)
+                        .unwrap_or_else(|| slint::Color::from_rgb_u8(107, 114, 128)),
+                    account_count: i32::try_from(
+                        profile
+                            .account_ids
+                            .iter()
+                            .filter(|account_id| known_accounts.contains(account_id))
+                            .count(),
+                    )
+                    .unwrap_or(i32::MAX),
+                }
+            })
+            .collect::<Vec<_>>(),
+    )));
+    app.set_show_account_markers(presentation.show_markers);
 }
 
 pub(super) fn refresh_connected_accounts(app: &AppWindow, state: &Rc<RefCell<InboxState>>) {
@@ -254,6 +295,7 @@ pub(super) fn refresh_connected_accounts(app: &AppWindow, state: &Rc<RefCell<Inb
         &state.carddav_connections,
         &state.calendar_errors,
         &state.profile_avatar_images,
+        &state.account_presentation,
     );
     drop(state);
     app.global::<AccountMailPreferences>()

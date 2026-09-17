@@ -136,7 +136,7 @@ component ThemeColorChip inherits FocusScope {
     }
 }
 
-component RuntimeColorPicker inherits Rectangle {
+export component RuntimeColorPicker inherits Rectangle {
     in-out property <color> value;
     callback edited(color);
     private property <float> hue: root.value.to-hsv().hue;
@@ -150,6 +150,12 @@ component RuntimeColorPicker inherits Rectangle {
     border-width: 1px;
     border-color: AppTheme.border-subtle;
     background: AppTheme.surface-raised;
+
+    init => {
+        // External bindings are resolved before the component is shown, but
+        // an in-out string keeps its type default until explicitly synced.
+        root.hex-value = ThemeUtilities.color-to-hex(root.value);
+    }
 
     changed value => {
         root.hex-value = ThemeUtilities.color-to-hex(root.value);

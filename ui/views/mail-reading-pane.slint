@@ -1,7 +1,7 @@
 import { AccountMailPreferences } from "../components/account-mail-preferences.slint";
 import { ActionMenu, ActionMenuEntry } from "../components/action-menu.slint";
 import { ZoomControls } from "../components/zoom-controls.slint";
-import { Button as ReaderButton, HorizontalBox, ListView, ScrollView, VerticalBox } from "std-widgets.slint";
+import { Button as ReaderButton, CheckBox, HorizontalBox, ListView, ScrollView, VerticalBox } from "std-widgets.slint";
 import { MailAttachments, EmailReader, EmailLink, EmailTile, MailLabelRow, ThreadMessageRow } from "../models.slint";
 import { SidebarItem } from "../components/sidebar-controls.slint";
 import { Avatar } from "../components/avatar.slint";
@@ -358,7 +358,7 @@ export component MailReadingPane inherits Rectangle {
     in property <color> title-color;
     callback message_action(string);
     callback toggle-mail-label(int, bool);
-    callback save-mail-label(int, string, color);
+    callback save-mail-label(int, string, color, bool);
     callback search-mail-labels(string);
     callback select_email(int);
     callback select_thread_message(int);
@@ -432,6 +432,7 @@ export component MailReadingPane inherits Rectangle {
     private property <string> label-search-query: "";
     private property <int> label-editor-id: -1;
     private property <bool> label-editor-is-auto: false;
+    private property <bool> label-editor-is-global: false;
     private property <string> new-label-name: "";
     private property <color> new-label-color: #4a86e8;
     // The desktop reading pane is flexible and can become much narrower than
@@ -642,11 +643,11 @@ export component MailReadingPane inherits Rectangle {
                                                         background: label-hit.has-hover ? root.control-bg : transparent;
 
                                                         Image {
-                                                            x: 7px;
-                                                            y: 13px;
-                                                            width: 16px;
-                                                            height: 16px;
-                                                            source: @image-url("../icons/lucide/outline/file-directory.svg");
+                                                            x: 15px - self.width / 2;
+                                                            y: (parent.height - self.height) / 2;
+                                                            width: LayoutMetrics.icon-size;
+                                                            height: LayoutMetrics.icon-size;
+                                                            source: @image-url("../icons/lucide/filled/tag.svg");
                                                             colorize: label.color;
                                                             image-fit: contain;
                                                             accessible-role: none;
@@ -654,12 +655,24 @@ export component MailReadingPane inherits Rectangle {
                                                         Text {
                                                             x: 30px;
                                                             width: parent.width - 88px;
-                                                            height: parent.height;
+                                                            y: 3px;
+                                                            height: 20px;
                                                             text: label.name;
                                                             color: root.heading;
                                                             font-size: TypeScale.body;
                                                             font-weight: label.applied ? 600 : 500;
                                                             font-family: label.name_has_emoji ? "Noto Emoji" : "";
+                                                            overflow: elide;
+                                                            vertical-alignment: center;
+                                                        }
+                                                        Text {
+                                                            x: 30px;
+                                                            y: 22px;
+                                                            width: parent.width - 88px;
+                                                            height: 16px;
+                                                            text: label.is_auto ? @tr("Smart category") : label.account_name;
+                                                            color: root.muted-text;
+                                                            font-size: TypeScale.caption;
                                                             overflow: elide;
                                                             vertical-alignment: center;
                                                         }
@@ -676,7 +689,7 @@ export component MailReadingPane inherits Rectangle {
                                                         }
                                                         label-hit := TouchArea {
                                                             accessible-role: checkbox;
-                                                            accessible-label: label.name;
+                                                            accessible-label: label.name + (label.account_name == "" ? "" : ", " + label.account_name);
                                                             accessible-checked: label.applied;
                                                             accessible-item-index: index;
                                                             accessible-action-default => {
@@ -703,6 +716,7 @@ export component MailReadingPane inherits Rectangle {
                                                             clicked => {
                                                                 root.label-editor-id = label.id;
                                                                 root.label-editor-is-auto = label.is_auto;
+                                                                root.label-editor-is-global = label.is_global;
                                                                 root.new-label-name = label.name;
                                                                 root.new-label-color = label.color;
                                                                 root.label-editor-open = true;
@@ -733,6 +747,7 @@ export component MailReadingPane inherits Rectangle {
                                                 clicked => {
                                                     root.label-editor-id = -1;
                                                     root.label-editor-is-auto = false;
+                                                    root.label-editor-is-global = false;
                                                     root.new-label-name = root.label-search-query;
                                                     root.new-label-color = #4a86e8;
                                                     root.label-editor-open = true;
@@ -1598,7 +1613,7 @@ export component MailReadingPane inherits Rectangle {
                         x: (parent.width - self.width) / 2;
                         y: (parent.height - self.height) / 2;
                         width: min(360px, parent.width - 32px);
-                        height: 250px;
+                        height: root.label-editor-id < 0 ? 294px : 250px;
                         border-radius: 10px;
                         border-width: 1px;
                         border-color: root.border;
@@ -1643,6 +1658,11 @@ export component MailReadingPane inherits Rectangle {
                                     LabelColorSwatch { swatch-color: #666666; selected: root.new-label-color == self.swatch-color; accessible-name: @tr("Slate"); chosen => { root.new-label-color = self.swatch-color; } }
                                 }
                             }
+                            if root.label-editor-id < 0 : CheckBox {
+                                height: 32px;
+                                text: @tr("Use across all accounts (local only)");
+                                checked <=> root.label-editor-is-global;
+                            }
                             HorizontalBox {
                                 height: 34px;
                                 spacing: 8px;
@@ -1658,7 +1678,12 @@ export component MailReadingPane inherits Rectangle {
                                     primary: true;
                                     enabled: root.new-label-name != "";
                                     clicked => {
-                                        root.save-mail-label(root.label-editor-id, root.new-label-name, root.new-label-color);
+                                        root.save-mail-label(
+                                            root.label-editor-id,
+                                            root.new-label-name,
+                                            root.new-label-color,
+                                            root.label-editor-is-global,
+                                        );
                                         root.label-editor-open = false;
                                     }
                                 }
