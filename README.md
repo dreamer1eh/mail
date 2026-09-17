@@ -106,12 +106,31 @@ The full workspace keeps your folders, message list, and selected email visible
 together. The minimal layout reduces visual noise and gives each part of your
 inbox more room when you need it.
 
+### Profiles and account colors
+
+Group related accounts into named profiles such as Work or Personal, then give
+each profile its own color. In Settings → Accounts → Profiles, you can assign
+accounts, override an individual account's color, and show the effective color
+along the left edge of every message. The markers make accounts easy to tell
+apart while working in the unified inbox; the example below uses purple for Work
+and orange for Support.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-profiles-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-profiles-light.png">
+  <img src="resources/screenshots/desktop-profiles-light.png" alt="Flectar Mail unified inbox with purple and orange profile color markers">
+</picture>
+
 ### Conversation threads
 
 Replies stay grouped in chronological order, with the active message expanded
 inside the reading pane.
 
-![Flectar Mail conversation with incoming and replied messages](resources/screenshots/desktop-thread-light.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-thread-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-thread-light.png">
+  <img src="resources/screenshots/desktop-thread-light.png" alt="Flectar Mail conversation with incoming and replied messages">
+</picture>
 
 ### Light
 
@@ -134,9 +153,54 @@ inside the reading pane.
 
 ### Calendar, contacts, and files
 
-| Calendar | Contacts | Files (WebDAV/JMAP) |
-| --- | --- | --- |
-| ![Flectar Mail calendar](resources/screenshots/desktop-calendar-light.png) | ![Flectar Mail contacts](resources/screenshots/desktop-contacts-light.png) | ![Flectar Mail files](resources/screenshots/desktop-files-light.png) |
+<table>
+  <thead>
+    <tr>
+      <th>Calendar</th>
+      <th>Contacts</th>
+      <th>Files (WebDAV/JMAP)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-calendar-dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-calendar-light.png">
+          <img src="resources/screenshots/desktop-calendar-light.png" alt="Flectar Mail calendar">
+        </picture>
+      </td>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-contacts-dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-contacts-light.png">
+          <img src="resources/screenshots/desktop-contacts-light.png" alt="Flectar Mail contacts">
+        </picture>
+      </td>
+      <td>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-files-dark.png">
+          <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-files-light.png">
+          <img src="resources/screenshots/desktop-files-light.png" alt="Flectar Mail files">
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+### Storage and backups
+
+Settings → Storage shows how much space mail, attachments, offline files, and
+databases use on the device. From the same page, you can export verified database
+snapshots or transfer connected-account setup and preferences through a backup.
+Passwords and OAuth tokens stay in the system keyring, so a restored device asks
+you to sign in again.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-storage-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-storage-light.png">
+  <img src="resources/screenshots/desktop-storage-light.png" alt="Flectar Mail Storage settings with local usage, database snapshot, and account backup controls">
+</picture>
 
 ### Made for smaller screens
 
