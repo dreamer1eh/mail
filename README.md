@@ -156,32 +156,32 @@ inside the reading pane.
 <table>
   <thead>
     <tr>
-      <th>Calendar</th>
-      <th>Contacts</th>
-      <th>Files (WebDAV/JMAP)</th>
+      <th width="33.33%">Calendar</th>
+      <th width="33.33%">Contacts</th>
+      <th width="33.33%">Files (WebDAV/JMAP)</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>
+      <td width="33.33%">
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-calendar-dark.png">
           <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-calendar-light.png">
-          <img src="resources/screenshots/desktop-calendar-light.png" alt="Flectar Mail calendar">
+          <img src="resources/screenshots/desktop-calendar-light.png" alt="Flectar Mail calendar" width="100%">
         </picture>
       </td>
-      <td>
+      <td width="33.33%">
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-contacts-dark.png">
           <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-contacts-light.png">
-          <img src="resources/screenshots/desktop-contacts-light.png" alt="Flectar Mail contacts">
+          <img src="resources/screenshots/desktop-contacts-light.png" alt="Flectar Mail contacts" width="100%">
         </picture>
       </td>
-      <td>
+      <td width="33.33%">
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="resources/screenshots/desktop-files-dark.png">
           <source media="(prefers-color-scheme: light)" srcset="resources/screenshots/desktop-files-light.png">
-          <img src="resources/screenshots/desktop-files-light.png" alt="Flectar Mail files">
+          <img src="resources/screenshots/desktop-files-light.png" alt="Flectar Mail files" width="100%">
         </picture>
       </td>
     </tr>
