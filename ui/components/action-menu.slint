@@ -167,10 +167,10 @@ export component ActionMenu inherits Rectangle {
                             opacity: entry.disabled ? 0.45 : 1;
 
                             Image {
-                                x: 10px;
+                                x: 18px - self.width / 2;
                                 y: (parent.height - self.height) / 2;
-                                width: 16px;
-                                height: 16px;
+                                width: LayoutMetrics.icon-size;
+                                height: LayoutMetrics.icon-size;
                                 source: entry.icon;
                                 colorize: entry.destructive ? AppTheme.destructive : AppTheme.secondary;
                                 image-fit: contain;

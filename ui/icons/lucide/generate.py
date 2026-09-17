@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parent
 def outputs(root=ROOT):
     sources = Sources(root)
     recipes = build(sources)
-    return sources, recipes, {name: Renderer().svg(recipe.drawing) for name, recipe in sorted(recipes.items())}
+    return sources, recipes, {name: Renderer().svg(recipe.drawing, custom=recipe.source is None)
+                              for name, recipe in sorted(recipes.items())}
 
 
 def outline_outputs(sources):

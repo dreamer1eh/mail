@@ -210,7 +210,6 @@ export component ContactsView inherits Rectangle {
                                 icon: entry.kind == ContactSidebarRowKind.favorites ? @image-url("../icons/lucide/filled/star.svg") : @image-url("../icons/lucide/filled/people.svg");
                                 selected: entry.kind == ContactSidebarRowKind.all ? root.selected-scope == "All contacts"
                                     : entry.kind == ContactSidebarRowKind.favorites ? root.selected-scope == "Favorites" : entry.account.selected;
-                                prominent: entry.kind != ContactSidebarRowKind.favorites;
                                 sidebar-background: root.sidebar-bg;
                                 selection-background: root.accent-soft;
                                 accent-color: root.accent;

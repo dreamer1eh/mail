@@ -65,10 +65,10 @@ export component LineEdit inherits Rectangle {
     }
 
     if root.show-leading-icon : Image {
-        x: 12px;
-        y: (parent.height - 16px) / 2;
-        width: 16px;
-        height: 16px;
+        x: 20px - self.width / 2;
+        y: (parent.height - self.height) / 2;
+        width: LayoutMetrics.icon-size;
+        height: LayoutMetrics.icon-size;
         source: root.leading-icon;
         colorize: root.leading-icon-color;
         image-fit: contain;
@@ -322,7 +322,7 @@ export component IconButton inherits Rectangle {
     in property <bool> primary: false;
     in property <bool> active: false;
     in property <bool> interactive: true;
-    in property <length> icon-size: 16px;
+    in property <length> icon-size: LayoutMetrics.icon-size;
     in property <string> tooltip-text: "";
     in property <bool> tooltip-above: false;
     in property <bool> tooltip-align-left: false;

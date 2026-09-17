@@ -348,7 +348,7 @@ export component FilesView inherits Rectangle {
                             }
 
                             Text { text: row.size; color: AppTheme.secondary; font-size: TypeScale.caption; width: 70px; horizontal-alignment: right; }
-                            if row.locked : Image { width: 16px; height: 16px; source: @image-url("../icons/lucide/outline/lock.svg"); colorize: AppTheme.muted; }
+                            if row.locked : Image { width: LayoutMetrics.icon-size; height: LayoutMetrics.icon-size; source: @image-url("../icons/lucide/outline/lock.svg"); colorize: AppTheme.muted; }
                         }
                         row-focus := FocusScope {
                             enabled: !FilesUi.busy;

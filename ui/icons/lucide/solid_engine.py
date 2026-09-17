@@ -166,7 +166,7 @@ class Renderer:
             return result
         raise TypeError(type(node))
 
-    def svg(self, node):
+    def svg(self, node, *, custom=False):
         self.defs = ET.Element("defs")
         self.counter = 0
         root = ET.Element("svg", {
@@ -177,5 +177,7 @@ class Renderer:
             root.append(self.defs)
         root.append(drawing)
         ET.indent(root, space="  ")
-        return ('<!-- Generated from lucide-static 1.46.0; ISC license in ../LICENSE. -->\n'
+        provenance = ('<!-- Generated custom Flectar icon; recipe in ../solid_recipes.py. -->\n'
+                      if custom else '<!-- Generated from lucide-static 1.46.0; ISC license in ../LICENSE. -->\n')
+        return (provenance
                 + ET.tostring(root, encoding="unicode") + "\n")

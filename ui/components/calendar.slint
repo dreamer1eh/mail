@@ -1,4 +1,4 @@
-import { SidebarRowSurface } from "sidebar-row.slint";
+import { SidebarRowSurface, SidebarStyle } from "sidebar-row.slint";
 import { CalendarDay, CalendarEventRow, CalendarSourceRow, CalendarWeekDay } from "../models.slint";
 import { Button } from "button.slint";
 import { IconButton, ToolbarIconButton } from "controls.slint";
@@ -278,8 +278,8 @@ export component FunctionalCalendarSidebar inherits CollapsibleWorkspaceSidebar 
                         text: calendar.name != "" ? calendar.name : @tr("Calendar");
                         color: root.body-color;
                         opacity: calendar.enabled ? 1 : 0.55;
-                        font-size: TypeScale.secondary;
-                        font-weight: calendar.is-default ? 650 : 500;
+                        font-size: SidebarStyle.label-size;
+                        font-weight: calendar.is-default ? SidebarStyle.selected-weight : SidebarStyle.normal-weight;
                         overflow: elide;
                         vertical-alignment: center;
                     }
@@ -692,9 +692,9 @@ export component FunctionalCalendarView inherits Rectangle {
             width: parent.width;
             title: root.month-title;
             background-color: root.surface-color;
-            IconButton { width: LayoutMetrics.touch-target; height: LayoutMetrics.touch-target; icon-size: 16px; icon: @image-url("../icons/lucide/outline/chevron-left.svg"); icon-color: root.secondary-color; idle-background: root.control-color; hover-background: root.control-hover-color; tooltip-text: @tr("Previous month"); accessible-id: "calendar-previous-month"; clicked => { root.navigate("month", -1); } }
-            IconButton { width: LayoutMetrics.touch-target; height: LayoutMetrics.touch-target; icon-size: 16px; icon: @image-url("../icons/lucide/outline/chevron-right.svg"); icon-color: root.secondary-color; idle-background: root.control-color; hover-background: root.control-hover-color; tooltip-text: @tr("Next month"); accessible-id: "calendar-next-month"; clicked => { root.navigate("month", 1); } }
-            IconButton { width: LayoutMetrics.touch-target; height: LayoutMetrics.touch-target; icon-size: 16px; icon: @image-url("../icons/lucide/filled/calendar-add.svg"); primary: true; tooltip-text: @tr("New event"); accessible-id: "calendar-new-event"; clicked => { root.new-event(); } }
+            IconButton { width: LayoutMetrics.touch-target; height: LayoutMetrics.touch-target; icon: @image-url("../icons/lucide/outline/chevron-left.svg"); icon-color: root.secondary-color; idle-background: root.control-color; hover-background: root.control-hover-color; tooltip-text: @tr("Previous month"); accessible-id: "calendar-previous-month"; clicked => { root.navigate("month", -1); } }
+            IconButton { width: LayoutMetrics.touch-target; height: LayoutMetrics.touch-target; icon: @image-url("../icons/lucide/outline/chevron-right.svg"); icon-color: root.secondary-color; idle-background: root.control-color; hover-background: root.control-hover-color; tooltip-text: @tr("Next month"); accessible-id: "calendar-next-month"; clicked => { root.navigate("month", 1); } }
+            IconButton { width: LayoutMetrics.touch-target; height: LayoutMetrics.touch-target; icon: @image-url("../icons/lucide/filled/calendar-add.svg"); primary: true; tooltip-text: @tr("New event"); accessible-id: "calendar-new-event"; clicked => { root.new-event(); } }
         }
 
         Rectangle {

@@ -1,19 +1,21 @@
 # Lucide icons
 
 Flectar Mail uses Lucide outlines and custom filled variants. SVGs are generated
-from the unmodified `lucide-static` 1.46.0 assets in `sources/`. The source hashes
-and outline mappings are recorded in `sources.json`; filled mappings are defined
-in `solid_recipes.py`. Licensing is included in [LICENSE](LICENSE).
+using the unmodified `lucide-static` 1.46.0 assets in `sources/` and custom recipes.
+Source hashes and outline mappings are recorded in `sources.json`; filled
+mappings are defined in `solid_recipes.py`. Licensing is included in [LICENSE](LICENSE).
 
 ## Size and stroke
 
 Each icon has one filename per family, such as `outline/calendar.svg` and
-`filled/calendar.svg`. Slint controls the display size. Toolbar icons use 16px;
-the desktop product rail uses 20px and compact navigation uses 22px.
+`filled/calendar.svg`. Slint controls the display size. Standard action icons,
+sidebar navigation icons and the desktop product rail use the shared 18px
+`LayoutMetrics.icon-size`; compact navigation uses 22px.
 
 Outlines retain Lucide's original paths and 24×24 viewBox, with
 `stroke-width="1.8"`. At 16px this produces a 1.2px visible stroke:
-`1.8 × 16 / 24 = 1.2`. The stroke scales proportionally at other display sizes.
+`1.8 × 16 / 24 = 1.2`. At the standard 18px display size the visible stroke is
+1.35px. The stroke scales proportionally at other display sizes.
 
 `DISPLAY_SIZE` and `DISPLAY_STROKE_PX` in `solid_engine.py` define the outline
 weight. Filled recipes use separate settings and the original source geometry.
@@ -39,6 +41,9 @@ Recipes explicitly define contour closures, overlapping objects and optical
 adjustments. Changes to upstream geometry require updating the pinned hashes and
 reviewing the affected recipes. Generated SVGs are checked into the repository;
 normal application builds do not require Python or network access for icons.
+
+Custom alternatives use the `-flectar` suffix, such as `filled/inbox-flectar.svg`,
+and are generated from `solid_recipes.py` alongside the Lucide variants.
 
 ## Generation
 

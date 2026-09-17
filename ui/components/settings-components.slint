@@ -1,6 +1,7 @@
 import { ComboBox, HorizontalBox, VerticalBox } from "std-widgets.slint";
 import { LineEdit, Switch } from "controls.slint";
 import { TypeScale } from "../typography.slint";
+import { SidebarStyle } from "sidebar-row.slint";
 
 // Settings navigation is intentionally separate from MailSidebar: the latter
 // owns mailbox models, compose actions, and tree expansion state.
@@ -21,8 +22,8 @@ export component SettingsNavItem inherits Rectangle {
     Image {
         x: 10px;
         y: (parent.height - self.height) / 2;
-        width: 17px;
-        height: 17px;
+        width: SidebarStyle.icon-size;
+        height: SidebarStyle.icon-size;
         source: root.icon;
         colorize: root.selected ? root.accent : root.muted-text;
         image-fit: contain;
@@ -33,9 +34,9 @@ export component SettingsNavItem inherits Rectangle {
         width: parent.width - 47px;
         height: parent.height;
         text: root.text;
-        color: root.selected ? root.accent : root.body-text;
-        font-size: TypeScale.body;
-        font-weight: root.selected ? 700 : 500;
+        color: root.body-text;
+        font-size: SidebarStyle.label-size;
+        font-weight: root.selected ? SidebarStyle.selected-weight : SidebarStyle.normal-weight;
         vertical-alignment: center;
         overflow: elide;
     }

@@ -2,6 +2,7 @@ import { ScrollFade } from "scroll-fade.slint";
 import { ListView, VerticalBox } from "std-widgets.slint";
 import { SidebarRow, SidebarRowKind } from "../models.slint";
 import { SidebarItem, SidebarSectionHeader } from "sidebar-controls.slint";
+import { SidebarStyle } from "sidebar-row.slint";
 import { Button } from "button.slint";
 import { IconButton, LineEdit } from "controls.slint";
 import {
@@ -75,10 +76,10 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                 background: find-hit.has-hover ? root.hover-background : transparent;
 
                 Image {
-                    x: 5px;
-                    y: 8px;
-                    width: 16px;
-                    height: 16px;
+                    x: 13px - self.width / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: LayoutMetrics.icon-size;
+                    height: LayoutMetrics.icon-size;
                     source: @image-url("../icons/lucide/outline/search.svg");
                     colorize: root.muted-color;
                     image-fit: contain;
@@ -205,9 +206,8 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         account-id: 0;
                         folder-id: -1;
                         mail-drop-enabled: true;
-                        icon: @image-url("../icons/lucide/filled/inbox.svg");
+                        icon: @image-url("../icons/lucide/filled/inbox-flectar.svg");
                         selected: root.selected-scope == "Unified Inbox";
-                        prominent: true;
                         row-height: 32px;
                         sidebar-background: root.background-color;
                         selection-background: root.selection-background;
@@ -276,7 +276,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         y: 0px;
                         width: parent.width;
                         label: @tr("Important");
-                        left-padding: 42px;
+                        left-padding: SidebarStyle.icon-left + SidebarStyle.branch-indent;
                         scope: "Important";
                         mail-drop-enabled: true;
                         icon: @image-url("../icons/lucide/filled/tag.svg");
@@ -295,7 +295,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         y: 0px;
                         width: parent.width;
                         label: @tr("Other");
-                        left-padding: 42px;
+                        left-padding: SidebarStyle.icon-left + SidebarStyle.branch-indent;
                         scope: "Other";
                         mail-drop-enabled: true;
                         icon: @image-url("../icons/lucide/filled/tag.svg");
@@ -315,7 +315,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         width: parent.width;
                         label: entry.label.name;
                         label-has-emoji: entry.label.name_has_emoji;
-                        left-padding: 42px;
+                        left-padding: SidebarStyle.icon-left + SidebarStyle.branch-indent;
                         scope: "Category:" + entry.label.id;
                         mail-drop-enabled: true;
                         icon: @image-url("../icons/lucide/filled/tag.svg");
@@ -355,7 +355,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         label: entry.label.name;
                         accessible-name: @tr("Global label {}", entry.label.name);
                         label-has-emoji: entry.label.name_has_emoji;
-                        left-padding: 42px;
+                        left-padding: SidebarStyle.icon-left + SidebarStyle.branch-indent;
                         label-id: entry.label.id;
                         editable-color: entry.label.color;
                         scope: "GlobalLabel:" + entry.label.id;
@@ -426,8 +426,8 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                             && entry.mailbox.label != "Drafts")
                             || entry.mailbox.label == "Starred";
                         mail-drop-copies: entry.mailbox.label == "Starred";
-                        left-padding: 26px + entry.mailbox.depth * 16px;
-                        icon: entry.mailbox.label == "Inbox" ? @image-url("../icons/lucide/filled/inbox.svg")
+                        left-padding: SidebarStyle.icon-left + entry.mailbox.depth * SidebarStyle.branch-indent;
+                        icon: entry.mailbox.label == "Inbox" ? @image-url("../icons/lucide/filled/inbox-flectar.svg")
                             : entry.mailbox.label == "Starred" ? @image-url("../icons/lucide/filled/star.svg")
                             : entry.mailbox.label == "Sent" ? @image-url("../icons/lucide/filled/paper-airplane.svg")
                             : entry.mailbox.label == "Archive" ? @image-url("../icons/lucide/filled/archive.svg")
@@ -437,7 +437,6 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                             : entry.mailbox.scope == root.selected-scope ? @image-url("../icons/lucide/filled/folder-open.svg")
                             : @image-url("../icons/lucide/filled/file-directory.svg");
                         selected: entry.mailbox.scope == root.selected-scope;
-                        prominent: entry.mailbox.label == "Inbox";
                         row-height: entry.mailbox.label == "Inbox" ? 32px : 28px;
                         sidebar-background: root.background-color;
                         selection-background: root.selection-background;
@@ -469,7 +468,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         width: parent.width;
                         label: @tr("Labels");
                         label-font-weight: 500;
-                        left-padding: 16px;
+                        left-padding: SidebarStyle.branch-indent;
                         folder-row-style: true;
                         sidebar-background: root.background-color;
                         hover-background: root.hover-background;
@@ -488,7 +487,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         label: entry.label.name;
                         accessible-name: @tr("{} label, {} account", entry.label.name, entry.label.account_name);
                         label-has-emoji: entry.label.name_has_emoji;
-                        left-padding: 58px;
+                        left-padding: SidebarStyle.icon-left + 2 * SidebarStyle.branch-indent;
                         label-id: entry.label.id;
                         editable-color: entry.label.color;
                         scope: "AccountLabel:" + entry.label.id;
@@ -534,7 +533,7 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                         width: parent.width;
                         label: @tr("New label");
                         scope: "";
-                        left-padding: 58px;
+                        left-padding: SidebarStyle.icon-left + 2 * SidebarStyle.branch-indent;
                         icon: @image-url("../icons/lucide/outline/plus.svg");
                         sidebar-background: root.background-color;
                         selection-background: root.selection-background;
@@ -558,15 +557,16 @@ export component MailSidebar inherits CollapsibleWorkspaceSidebar {
                             height: parent.height;
                             text: @tr("Add account");
                             color: root.muted-color;
-                            font-size: TypeScale.caption;
+                            font-size: SidebarStyle.label-size;
+                            font-weight: SidebarStyle.normal-weight;
                             vertical-alignment: center;
                         }
 
                         Image {
-                            x: 5px;
-                            y: 10px;
-                            width: 14px;
-                            height: 14px;
+                            x: 12px - self.width / 2;
+                            y: (parent.height - self.height) / 2;
+                            width: SidebarStyle.icon-size;
+                            height: SidebarStyle.icon-size;
                             source: @image-url("../icons/lucide/outline/plus.svg");
                             colorize: root.muted-color;
                             image-fit: contain;

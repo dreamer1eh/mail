@@ -29,8 +29,8 @@ component ProductRailItem inherits Rectangle {
         Image {
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
-            width: 20px;
-            height: 20px;
+            width: LayoutMetrics.icon-size;
+            height: LayoutMetrics.icon-size;
             source: root.active ? root.filled-icon : root.outline-icon;
             colorize: root.active ? root.accent-color : root.muted-color;
             image-fit: contain;

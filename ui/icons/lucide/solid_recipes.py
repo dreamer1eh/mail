@@ -1,16 +1,17 @@
-"""Filled icon recipes built from hash-pinned SVG elements.
+"""Filled icon recipes built from hash-pinned SVG elements or custom paths.
 
 Element indices refer to zero-based direct SVG children. Recipes define contour
 closures, path splits and optical adjustments.
 """
 
 from dataclasses import dataclass
+import xml.etree.ElementTree as ET
 from solid_engine import ACTIVE_WIDTH, OUTLINE_WIDTH, cut, group, line, over, solid
 
 
 @dataclass(frozen=True)
 class Recipe:
-    source: str
+    source: str | None  # None identifies a fully custom drawing.
     drawing: object
     note: str
 
@@ -50,6 +51,24 @@ def build(sources):
                      solid(p(name, shoulders, append="Z")))
 
     person = group(solid(p("users", 3)), solid(p("users", 0, append="Z")))
+    # Custom front-facing tray, following the Things reference: the sides lean
+    # inward by only 0.35 units toward the top. The opening follows that taper,
+    # with broad curved shoulders and softly rounded bottom corners. A slightly
+    # thinner top rim keeps the opening airy at the 18px sidebar display size.
+    inbox_flectar = cut(solid(ET.Element("path", d=(
+        "M4.75 2H19.25C20.55 2 21.62 3.02 21.65 4.32L22 19.32"
+        "C22.035 20.78 20.91 22 19.45 22H4.55"
+        "C3.09 22 1.965 20.78 2 19.32L2.35 4.32"
+        "C2.38 3.02 3.45 2 4.75 2Z"
+    ))), solid(ET.Element("path", d=(
+        "M5.8 5.4H18.2C18.61 5.4 18.935 5.72 18.95 6.13L19.1 11.6"
+        "C19.115 12.1 18.73 12.5 18.23 12.5H17.5"
+        "A2.25 2.25 0 0 0 15.25 14.75V18.75"
+        "A.75 .75 0 0 1 14.5 19.5H9.5A.75 .75 0 0 1 8.75 18.75V14.75"
+        "A2.25 2.25 0 0 0 6.5 12.5H5.77"
+        "C5.27 12.5 4.885 12.1 4.9 11.6L5.05 6.13"
+        "C5.065 5.72 5.39 5.4 5.8 5.4Z"
+    ))))
     recipes = {
         "account": Recipe("circle-user-round", cut(
             solid(p("circle-user-round", 2)), portrait("circle-user-round", 1, 0)),
@@ -94,6 +113,8 @@ def build(sources):
             "Solid gear; central hole."),
         "inbox": Recipe("inbox", cut(solid(p("inbox", 1)), line(p("inbox", 0), 1.8)),
             "Solid tray; original lip becomes a cutout."),
+        "inbox-flectar": Recipe(None, inbox_flectar,
+            "Custom tapered tray; softly rounded outline and curved shoulders around an open well."),
         "info": Recipe("info", cut(solid(p("info", 0)), lines("info", 1, 2)),
             "Solid circle; information mark cutout."),
         "keyboard": Recipe("keyboard", cut(solid(p("keyboard", 8)), lines("keyboard", *range(8))),

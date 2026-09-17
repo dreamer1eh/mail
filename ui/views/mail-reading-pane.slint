@@ -1468,7 +1468,7 @@ export component MailReadingPane inherits Rectangle {
                                 height: root.compact ? LayoutMetrics.touch-target : 32px;
                                 border-width: 1px;
                                 border-color: root.border;
-                                icon-size: root.compact ? LayoutMetrics.compact-toolbar-icon-size : 16px;
+                                icon-size: root.compact ? LayoutMetrics.compact-toolbar-icon-size : LayoutMetrics.desktop-toolbar-icon-size;
                                 icon: @image-url("../icons/lucide/outline/reply.svg");
                                 icon-color: root.secondary-text;
                                 idle-background: root.surface;
@@ -1485,7 +1485,7 @@ export component MailReadingPane inherits Rectangle {
                                 height: root.compact ? LayoutMetrics.touch-target : 32px;
                                 border-width: 1px;
                                 border-color: root.border;
-                                icon-size: root.compact ? LayoutMetrics.compact-toolbar-icon-size : 16px;
+                                icon-size: root.compact ? LayoutMetrics.compact-toolbar-icon-size : LayoutMetrics.desktop-toolbar-icon-size;
                                 icon: @image-url("../icons/lucide/outline/reply-all.svg");
                                 icon-color: root.secondary-text;
                                 idle-background: root.surface;
@@ -1502,7 +1502,7 @@ export component MailReadingPane inherits Rectangle {
                                 height: root.compact ? LayoutMetrics.touch-target : 32px;
                                 border-width: 1px;
                                 border-color: root.border;
-                                icon-size: root.compact ? LayoutMetrics.compact-toolbar-icon-size : 16px;
+                                icon-size: root.compact ? LayoutMetrics.compact-toolbar-icon-size : LayoutMetrics.desktop-toolbar-icon-size;
                                 icon: @image-url("../icons/lucide/outline/forward.svg");
                                 icon-color: root.secondary-text;
                                 idle-background: root.surface;
@@ -1535,7 +1535,6 @@ export component MailReadingPane inherits Rectangle {
                             if !root.compact && !root.selected_is_draft && root.icon-only-footer-actions : IconButton {
                                 border-width: 1px;
                                 border-color: root.border;
-                                icon-size: 16px;
                                 icon: @image-url("../icons/lucide/outline/browser.svg");
                                 icon-color: root.secondary-text;
                                 idle-background: root.surface;
@@ -1550,7 +1549,6 @@ export component MailReadingPane inherits Rectangle {
                             if !root.compact && !root.selected_is_draft : IconButton {
                                 border-width: 1px;
                                 border-color: root.border;
-                                icon-size: 16px;
                                 icon: @image-url("../icons/lucide/outline/info.svg");
                                 icon-color: root.secondary-text;
                                 idle-background: root.surface;

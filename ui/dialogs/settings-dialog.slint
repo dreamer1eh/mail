@@ -1056,7 +1056,7 @@ export component SettingsDialog inherits Rectangle {
                                             width: 20px;
                                             data: root.make_account_transfer(account.drag_key);
                                             allow-move: true;
-                                            Image { width: 16px; height: 16px; source: @image-url("../icons/lucide/outline/list-unordered.svg"); colorize: root.muted-text; image-fit: contain; accessible-role: none; }
+                                            Image { width: LayoutMetrics.icon-size; height: LayoutMetrics.icon-size; source: @image-url("../icons/lucide/outline/list-unordered.svg"); colorize: root.muted-text; image-fit: contain; accessible-role: none; }
                                         }
                                         Rectangle {
                                             width: 44px;
@@ -1303,7 +1303,7 @@ export component SettingsDialog inherits Rectangle {
                                 height: root.account-transfer-supported ? (root.compact ? 188px : 136px) : 0px;
                                 vertical-stretch: 0;
                                 SettingsCard { title: @tr("Database snapshot"); description: @tr("Export verified copies of the mail and calendar databases with their schema versions."); surface: root.surface; card-border-color: root.border-subtle; heading: root.heading; secondary-text: root.faint-text; }
-                                Image { x: 20px; y: 79px; width: 16px; height: 16px; source: @image-url("../icons/lucide/outline/database.svg"); colorize: root.accent; image-fit: contain; accessible-role: none; }
+                                Image { x: 20px; y: 72px + (42px - self.height) / 2; width: LayoutMetrics.icon-size; height: LayoutMetrics.icon-size; source: @image-url("../icons/lucide/outline/database.svg"); colorize: root.accent; image-fit: contain; accessible-role: none; }
                                 Text { x: 48px; y: 72px; width: root.compact ? parent.width - 68px : parent.width - 260px; height: 42px; text: @tr("The snapshot contains private local mail and settings, but not passwords or OAuth tokens. Store it securely."); color: root.secondary-text; font-size: TypeScale.caption; wrap: word-wrap; vertical-alignment: center; }
                                 Button { x: root.compact ? 20px : parent.width - self.width - 20px; y: root.compact ? 139px : 77px; width: root.compact ? parent.width - 40px : 170px; text: @tr("Export snapshot"); icon: @image-url("../icons/lucide/outline/download.svg"); has-icon: true; clicked => { root.export_database_snapshot(); } }
                             }
@@ -1313,7 +1313,7 @@ export component SettingsDialog inherits Rectangle {
                                 height: root.account-transfer-supported ? (root.compact ? 188px : 136px) : 0px;
                                 vertical-stretch: 0;
                                 SettingsCard { title: @tr("Transfer account setup"); description: @tr("Import a backup or export one connected account and your preferences." | "Import a backup or export {n} connected accounts and your preferences." % root.connected_accounts.length); surface: root.surface; card-border-color: root.border-subtle; heading: root.heading; secondary-text: root.faint-text; }
-                                Image { x: 20px; y: 79px; width: 16px; height: 16px; source: @image-url("../icons/lucide/outline/check-circle.svg"); colorize: root.accent; image-fit: contain; accessible-role: none; }
+                                Image { x: 20px; y: 72px + (42px - self.height) / 2; width: LayoutMetrics.icon-size; height: LayoutMetrics.icon-size; source: @image-url("../icons/lucide/outline/check-circle.svg"); colorize: root.accent; image-fit: contain; accessible-role: none; }
                                 Text { x: 48px; y: 72px; width: root.compact ? parent.width - 68px : parent.width - 360px; height: 42px; text: @tr("Passwords and OAuth tokens stay in the system keyring. A restored device asks you to sign in securely."); color: root.secondary-text; font-size: TypeScale.caption; wrap: word-wrap; vertical-alignment: center; }
                                 HorizontalBox {
                                     x: root.compact ? 20px : parent.width - 300px;
@@ -1330,7 +1330,7 @@ export component SettingsDialog inherits Rectangle {
                                 height: root.compact ? 188px : 136px;
                                 vertical-stretch: 0;
                                 SettingsCard { title: @tr("Delete all local data"); description: @tr("Remove accounts, downloaded mail, calendars, contacts, preferences, and credentials from this device."); surface: root.surface; card-border-color: root.border-subtle; heading: root.heading; secondary-text: root.faint-text; }
-                                Image { x: 20px; y: 78px; width: 16px; height: 16px; source: @image-url("../icons/lucide/outline/trash.svg"); colorize: #d04a43; image-fit: contain; accessible-role: none; }
+                                Image { x: 20px; y: 72px + (42px - self.height) / 2; width: LayoutMetrics.icon-size; height: LayoutMetrics.icon-size; source: @image-url("../icons/lucide/outline/trash.svg"); colorize: #d04a43; image-fit: contain; accessible-role: none; }
                                 Text { x: 48px; y: 72px; width: root.compact ? parent.width - 68px : parent.width - 260px; height: 42px; text: @tr("This does not delete anything from Gmail, Outlook, or your IMAP server."); color: root.secondary-text; font-size: TypeScale.caption; wrap: word-wrap; vertical-alignment: center; }
                                 Button { x: root.compact ? 20px : parent.width - self.width - 20px; y: root.compact ? 139px : 77px; width: root.compact ? parent.width - 40px : 170px; text: @tr("Delete everything"); icon: @image-url("../icons/lucide/outline/trash.svg"); has-icon: true; clicked => { root.delete_data_confirmation = true; } }
                             }
@@ -1545,7 +1545,6 @@ export component SettingsDialog inherits Rectangle {
                 IconButton {
                     width: LayoutMetrics.touch-target;
                     height: LayoutMetrics.touch-target;
-                    icon-size: 16px;
                     icon: @image-url("../icons/lucide/outline/x.svg");
                     icon-color: root.secondary-text;
                     idle-background: transparent;
