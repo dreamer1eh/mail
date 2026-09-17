@@ -13,6 +13,7 @@ export component SettingsNavItem inherits Rectangle {
     in property <color> accent-soft;
     in property <color> body-text;
     in property <color> muted-text;
+    in property <color> icon-color: root.selected ? root.accent : root.muted-text;
     callback clicked;
 
     height: 36px;
@@ -25,7 +26,7 @@ export component SettingsNavItem inherits Rectangle {
         width: SidebarStyle.icon-size;
         height: SidebarStyle.icon-size;
         source: root.icon;
-        colorize: root.selected ? root.accent : root.muted-text;
+        colorize: root.icon-color;
         image-fit: contain;
         accessible-role: none;
     }
@@ -71,7 +72,8 @@ export component SettingsCard inherits Rectangle {
         text: root.title;
         color: root.heading;
         font-size: TypeScale.subtitle;
-        font-weight: 700;
+        font-weight: 600;
+        letter-spacing: -0.3px;
         vertical-alignment: center;
         overflow: elide;
     }

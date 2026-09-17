@@ -144,6 +144,7 @@ pub(super) fn reconcile_removed_account(state: &mut InboxState, account_id: i64)
     mail_work::invalidate(state);
 }
 
+#[allow(clippy::too_many_arguments, reason = "Projects the independently loaded account, connection, avatar, and presentation data into one UI model.")]
 pub(super) fn apply_connected_accounts(
     app: &AppWindow,
     accounts: &[Account],

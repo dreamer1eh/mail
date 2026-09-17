@@ -9,6 +9,16 @@ export struct LocalizedMessage {
     third_argument: string,
 }
 
+// Computed only while the Storage settings page is open. `offset` and
+// `fraction` let the view paint one proportional bar without doing byte math
+// in Slint's 32-bit integer type.
+export struct StorageUsageRow {
+    kind: string,
+    size: string,
+    fraction: float,
+    offset: float,
+    color: color,
+}
 
 // Drag payloads are opaque to Slint and stay application-internal. Keeping
 // the transfer construction, validation, and mutation on one shared global

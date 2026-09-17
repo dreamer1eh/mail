@@ -14,9 +14,9 @@ import { TypeScale } from "typography.slint";
 export { AppTheme, ThemeUtilities } from "design-system.slint";
 import { AppTheme, LayoutMetrics } from "design-system.slint";
 import { Button } from "components/button.slint";
-import { AccountRow, CalendarDay, CalendarEventRow, CalendarSourceRow, CalendarWeekDay, ComposeAttachment, ComposeContact, ComposeEditorTile, ContactSidebarRow, ContactRow, EmailLink, EmailRow, EmailTemplateRow, EmailTile, LocalizedMessage, MailProfileRow, SidebarRow, MailLabelRow, ThreadMessageRow } from "models.slint";
+import { AccountRow, CalendarDay, CalendarEventRow, CalendarSourceRow, CalendarWeekDay, ComposeAttachment, ComposeContact, ComposeEditorTile, ContactSidebarRow, ContactRow, EmailLink, EmailRow, EmailTemplateRow, EmailTile, LocalizedMessage, MailProfileRow, SidebarRow, MailLabelRow, StorageUsageRow, ThreadMessageRow } from "models.slint";
 export { EmailReader, ReaderCaret, ReaderImage, ReaderItem, MailDragApi } from "models.slint";
-export { ThreadMessageRow } from "models.slint";
+export { ThreadMessageRow, StorageUsageRow } from "models.slint";
 import { FunctionalCalendarView } from "components/calendar.slint";
 import { CompactProductNav, ProductRail } from "components/product-rail.slint";
 import { WorkspaceFrame } from "components/workspace-layout.slint";
@@ -521,6 +521,7 @@ export component AppWindow inherits Window {
     callback save_oauth_apps(string, string, string);
     pure callback make_account_transfer(string) -> data-transfer;
     pure callback read_account_transfer(data-transfer) -> string;
+    pure callback settings-search-matches(string, string) -> bool;
     callback reorder_account(string, int, bool);
     callback save_account_mail_history(int, string);
     callback connect_account_calendar(int);
@@ -533,6 +534,8 @@ export component AppWindow inherits Window {
     callback import_account_backup();
     callback export_database_snapshot();
     callback delete_all_data();
+    callback load_storage_usage();
+    callback cancel_storage_usage();
     callback open_email_link(string);
     callback copy_email_status(string);
     callback email-pointer-event(float, float, string, bool, bool, bool, bool);
@@ -712,6 +715,18 @@ export component AppWindow inherits Window {
         root.product-changed(root.active_view);
     }
     in-out property <string> settings_tab: "General";
+    // Own scan lifetime here: the conditional SettingsDialog is destroyed on
+    // close, so its own change handlers cannot reliably cancel a running scan.
+    private property <bool> storage-page-open: root.settings_open && root.settings_tab == "Data";
+    changed storage-page-open => {
+        if root.storage-page-open { root.load_storage_usage(); }
+        else { root.cancel_storage_usage(); }
+    }
+    in property <bool> storage_loading: false;
+    in property <bool> storage_loaded: false;
+    in property <string> storage_total: "";
+    in property <string> storage_error: "";
+    in property <[StorageUsageRow]> storage_usage: [];
     in-out property <string> theme_mode: "system";
     in-out property <bool> show_avatars: true;
     in-out property <bool> show_account_markers: false;
@@ -826,6 +841,7 @@ export component AppWindow inherits Window {
     // provide one, do not expose the desktop file:// printing fallback.
     in property <bool> print_supported: true;
     in property <bool> document_apis_supported: true;
+    in property <string> app-version: "";
 
     // Neutral, low-chrome surfaces keep the message content visually primary.
     // Interactive controls come from Slint's desktop widget set.
@@ -1362,6 +1378,12 @@ export component AppWindow inherits Window {
             oauth_in_progress: root.oauth_in_progress;
             oauth_settings_saving: root.oauth_settings_saving;
             sync_status: root.sync_status;
+            app-version: root.app-version;
+            storage_loading: root.storage_loading;
+            storage_loaded: root.storage_loaded;
+            storage_total: root.storage_total;
+            storage_error: root.storage_error;
+            storage_usage: root.storage_usage;
             accent: root.accent;
             accent-soft: root.accent-soft;
             body-text: root.body-text;
@@ -1489,6 +1511,7 @@ export component AppWindow inherits Window {
             set-remote-images(enabled) => { root.set-remote-images(enabled); }
             make_account_transfer(value) => root.make_account_transfer(value);
             read_account_transfer(value) => root.read_account_transfer(value);
+            settings-search-matches(haystack, query) => root.settings-search-matches(haystack, query);
             reorder_account(source, target, after) => { root.reorder_account(source, target, after); }
             save_account_mail_history(account-id, value) => { root.save_account_mail_history(account-id, value); }
             connect_account_calendar(account-id) => { root.connect_account_calendar(account-id); }
@@ -1501,6 +1524,7 @@ export component AppWindow inherits Window {
             import_account_backup => { root.import_account_backup(); }
             export_database_snapshot => { root.export_database_snapshot(); }
             delete_all_data => { root.delete_all_data(); }
+            load_storage_usage => { root.load_storage_usage(); }
             open-link(url) => { root.open_email_link(url); }
         }
         }

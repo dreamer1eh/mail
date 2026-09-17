@@ -416,23 +416,12 @@ struct UiTaskUpdate {
     close_to_tray: Option<bool>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct AccountPresentationSettings {
     profiles: Vec<MailProfile>,
     show_markers: bool,
     account_colors: HashMap<String, String>,
     account_short_names: HashMap<String, String>,
-}
-
-impl Default for AccountPresentationSettings {
-    fn default() -> Self {
-        Self {
-            profiles: Vec::new(),
-            show_markers: false,
-            account_colors: HashMap::new(),
-            account_short_names: HashMap::new(),
-        }
-    }
 }
 
 impl AccountPresentationSettings {
@@ -1269,6 +1258,11 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
     // Until startup completes it paints the inert mailbox shell; mapping now
     // avoids making callback wiring part of first-window latency.
     let app = renderer_preferences::initialize_step(use_wgpu, AppWindow::new)?;
+    app.set_app_version(env!("CARGO_PKG_VERSION").into());
+    app.on_settings_search_matches(|haystack, query| {
+        let query = query.to_string().trim().to_lowercase();
+        query.is_empty() || haystack.to_string().to_lowercase().contains(&query)
+    });
     renderer_preferences::register(
         &app,
         renderer_preference_path,
@@ -6396,6 +6390,7 @@ pub fn run(platform: PlatformContext) -> Result<(), Box<dyn std::error::Error>> 
 
     register_data_management_callbacks(
         &app,
+        &platform.paths,
         &state,
         &runtime,
         &ui_task_tx,

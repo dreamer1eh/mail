@@ -82,7 +82,7 @@ pub(super) fn refresh_sidebar(state: &Rc<RefCell<InboxState>>) {
     let mut labels = make_label_rows(&state.labels, None, "");
     for label in &mut labels {
         if let Some(name) = account_names.get(&label.account_id) {
-            label.account_name = name.clone().into();
+            label.account_name = name.clone();
         } else if label.is_global {
             label.account_name = "All accounts".into();
         }

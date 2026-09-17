@@ -2767,7 +2767,7 @@ mod tests {
             owner_account_id: Some(7),
             is_auto: false,
         };
-        let account_scope = resolve_scope("AccountLabel:33", &[], &[], &[account_label.clone()]);
+        let account_scope = resolve_scope("AccountLabel:33", &[], &[], std::slice::from_ref(&account_label));
         assert_eq!(account_scope.account_id, Some(7));
         assert_eq!(account_scope.label_id, Some(33));
         assert_eq!(
